@@ -549,6 +549,7 @@ class Session {
       const secret = hex(rest.subarray(1 + idLen, 33 + idLen));
       this.pc = { hostId: this.host.id, name: this.host.name, credId, secret, last: Date.now() };
       mem.pcs = mem.pcs.filter((p) => p.hostId !== this.pc.hostId).concat(this.pc);
+      mem.lastHost = this.pc.hostId;
       persist();
       this.code = null;
     } else if (result === AUTH.DENIED) {
@@ -855,12 +856,26 @@ function showTab(which) {
 $('tabCode').onclick = () => showTab('code');
 $('tabPass').onclick = () => showTab('pass');
 
-// A link from the PC carries its id after the #, so opening it lands on the password form.
-const linked = hostIdFrom(location.hash);
+// A link from the PC carries its id after the #, and sometimes its pairing code as well. With a
+// code, opening the link pairs straight away; with only the id it lands on the password form.
+const linkParams = new URLSearchParams(location.hash.replace(/^#/, ''));
+const linked = hostIdFrom(linkParams.get('pc') || '');
+const linkedCode = (linkParams.get('code') || '').trim();
 const remembered = mem.lastHost || (mem.pcs.find((p) => p.key) || {}).hostId;
-if (linked) { $('pcid').value = linked; showTab('pass'); history.replaceState(null, '', location.pathname + location.search); }
-else if (remembered && mem.pcs.length === 0) $('pcid').value = remembered;
-else if (mem.pcs.length === 0) $('code').focus();
+if (linked) { mem.lastHost = linked; persist(); $('pcid').value = linked; }
+if (linked || linkedCode) history.replaceState(null, '', location.pathname + location.search);
+if (linkedCode && looksLikeCode(linkedCode)) {
+  const t = normaliseCode(linkedCode);
+  $('code').value = t.slice(0, 4) + '-' + t.slice(4);
+  showTab('code');
+  start(null, linkedCode, false);
+} else if (linked) {
+  showTab('pass');
+} else if (remembered && mem.pcs.length === 0) {
+  $('pcid').value = remembered;
+} else if (mem.pcs.length === 0) {
+  $('code').focus();
+}
 
 $('passForm').addEventListener('submit', async (e) => {
   e.preventDefault();
