@@ -357,7 +357,7 @@ const iceServers = () => {
 
 // ── what a network offers, counted from candidate lines ──────────────────────────────────────
 /** Tally the candidates one end offers: how many of each kind, whether any are IPv6, and how its router maps it. */
-function tally() { return { host: 0, srflx: 0, relay: 0, v6: 0, maps: new Map() }; }
+function tally() { return { host: 0, srflx: 0, srflx4: 0, relay: 0, v6: 0, maps: new Map() }; }
 function note(t, line) {
   const f = line.replace(/^candidate:/, '').split(/\s+/);
   const type = f[f.indexOf('typ') + 1];
@@ -365,6 +365,7 @@ function note(t, line) {
   if (type === 'host' || type === 'prflx') t.host++;
   else if (type === 'srflx') {
     t.srflx++;
+    if (!(f[4] || '').includes(':')) t.srflx4++;
     // The same inside address seen from two servers under two outside ports is a router that
     // changes its answer per destination, which is the kind no hole can be punched through.
     const base = f[f.indexOf('raddr') + 1] + ':' + f[f.indexOf('rport') + 1];
@@ -380,7 +381,7 @@ function explainPath(info) {
   const l = info.local, r = info.remote, lines = [];
   if (!l.srflx && !l.relay && !l.v6) lines.push('This browser found no public address, so nothing outside can find it. Usual causes: a network that blocks UDP (school, office, some hotspots), a VPN, or a privacy setting that hides WebRTC (Brave Shields, Firefox privacy, WebRTC-blocking extensions).');
   else if (strict(l)) lines.push('This network gives out a different address for every destination, which mobile data usually does, so a direct link cannot open.');
-  else if (l.v6 && !l.srflx && !r.v6) lines.push('This network is IPv6 only, and the PC has no IPv6 address, so the two have nothing in common.');
+  else if (l.v6 && !l.srflx4 && !l.relay && !r.v6) lines.push('This network is IPv6 only (mobile data often is), and the PC has no IPv6 address, so the two have nothing in common. Connect the PC to a Wi-Fi or hotspot that gives it an IPv6 address, or set up a relay.');
   else if (!r.srflx && !r.v6 && !r.relay) lines.push('The PC offered no public address. It may be offline from the internet.');
   else lines.push('The two could not find a direct path.');
   lines.push(cfg().turn.trim() ? 'The relay you set up did not carry it either; check its address and password.' : 'Put this device on the same Wi-Fi as the PC, or set up a relay in Settings.');
