@@ -61,6 +61,38 @@
   #msg.busy { color: var(--dim); }
   .fine { color: var(--faint); font-size: 12px; margin: 0; }
 
+  .tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 4px; }
+  .tabs button { border: 0; background: transparent; color: var(--dim); border-radius: 9px; padding: 8px 10px; font-weight: 600; }
+  .tabs button[aria-selected="true"] { background: var(--raised); color: var(--text); }
+  .pair[hidden] { display: none; }
+  .field { display: grid; gap: 6px; }
+  .field span { font-size: 12px; color: var(--dim); font-weight: 600; }
+  .field input[type=text], .field input[type=password], .field input[type=url], .field input[type=number], .field textarea, .field select {
+    width: 100%; background: var(--raised); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; font-size: 15px;
+  }
+  .pair .field input { letter-spacing: normal; text-transform: none; text-align: left; font-size: 15px; font-weight: 400; }
+  .field textarea { min-height: 64px; resize: vertical; font-family: ui-monospace, Consolas, monospace; font-size: 13px; }
+  .check { display: flex; align-items: center; gap: 10px; font-size: 14px; }
+  .check input { width: 18px; height: 18px; accent-color: var(--accent); flex: none; }
+  .row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .more { display: flex; justify-content: space-between; align-items: center; }
+  dialog { border: 1px solid var(--line); border-radius: 18px; padding: 0; background: var(--bg); color: var(--text); width: min(520px, calc(100% - 24px)); max-height: calc(100% - 24px); }
+  dialog::backdrop { background: rgba(0,0,0,.55); }
+  dialog form { display: grid; gap: 16px; padding: 20px; }
+  dialog h2 { font-size: 18px; margin: 0; }
+  dialog h3 { font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--faint); margin: 6px 0 -4px; }
+  dialog .actions { display: flex; justify-content: flex-end; gap: 8px; position: sticky; bottom: 0; }
+  .seg { display: flex; gap: 4px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 3px; }
+  .seg label { flex: 1; text-align: center; padding: 7px 8px; border-radius: 7px; font-size: 13px; font-weight: 600; color: var(--dim); cursor: pointer; }
+  .seg input { position: absolute; opacity: 0; pointer-events: none; }
+  .seg label:has(input:checked) { background: var(--raised); color: var(--text); }
+  .seg label:has(input:focus-visible) { outline: 2px solid var(--accent); }
+  .strength { height: 4px; border-radius: 2px; background: var(--raised); overflow: hidden; }
+  .strength i { display: block; height: 100%; width: 0; background: var(--danger); transition: width .2s, background .2s; }
+  .toast { position: fixed; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 20px); transform: translateX(-50%); background: var(--surface); color: var(--text);
+           border: 1px solid var(--line); border-radius: 999px; padding: 10px 18px; font-size: 14px; box-shadow: 0 6px 24px rgba(0,0,0,.3); z-index: 20; }
+  .toast[hidden] { display: none; }
+
   /* ── stage ── */
   #stage { position: fixed; inset: 0; background: var(--stage); touch-action: none; user-select: none; }
   #view { position: absolute; inset: 0; width: 100%; height: 100%; display: block; outline: none; cursor: none; }
@@ -104,13 +136,30 @@
     </section>
 
     <section>
-      <p class="label" id="pairLabel">Pair a PC</p>
-      <form class="pair" id="pairForm" autocomplete="off">
-        <input id="code" inputmode="text" maxlength="9" placeholder="ABCD-1234" aria-labelledby="pairLabel" autocapitalize="characters" spellcheck="false">
-        <button class="btn" id="pairBtn" type="submit">Pair</button>
-        <p class="hint">Type the code FreeWatch shows on your PC. It works once, from anywhere.</p>
-      </form>
+      <p class="label">Connect</p>
+      <div class="tabs" role="tablist" aria-label="How to connect">
+        <button role="tab" id="tabCode" aria-selected="true" aria-controls="pairForm">Pair with a code</button>
+        <button role="tab" id="tabPass" aria-selected="false" aria-controls="passForm">Sign in with password</button>
+      </div>
     </section>
+
+    <form class="pair" id="pairForm" autocomplete="off" role="tabpanel" aria-labelledby="tabCode">
+      <input id="code" inputmode="text" maxlength="9" placeholder="ABCD-1234" aria-label="Pairing code" autocapitalize="characters" spellcheck="false">
+      <button class="btn" id="pairBtn" type="submit">Pair</button>
+      <p class="hint">Type the code FreeWatch shows on your PC. It works once, from anywhere, and this browser is remembered after.</p>
+    </form>
+
+    <form class="pair" id="passForm" autocomplete="on" role="tabpanel" aria-labelledby="tabPass" hidden>
+      <label class="field"><span>PC id or link</span><input id="pcid" type="text" autocomplete="off" spellcheck="false" placeholder="paste the web link, or its 16-character id"></label>
+      <label class="field"><span>Password</span><input id="pass" type="password" autocomplete="current-password" placeholder="your permanent password"></label>
+      <label class="check"><input id="remember" type="checkbox" checked> Remember on this browser</label>
+      <button class="btn" id="passBtn" type="submit">Sign in</button>
+      <p class="hint">In FreeWatch on the PC: Advanced settings, then Copy web link. The first time you need a paired device to set the password; after that this page is all you need.</p>
+    </form>
+
+    <div class="more">
+      <button class="link" id="openOptions" type="button">Connection options</button>
+    </div>
 
     <p id="msg" role="status"></p>
     <p class="fine">The picture travels straight between your PC and this browser, encrypted. This page keeps a secret key for each PC in this browser only; clearing site data forgets them.</p>
@@ -124,6 +173,8 @@
     <span id="stats"></span>
     <button id="zoomOut" title="Zoom out (Ctrl + scroll)" aria-label="Zoom out"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l5 5M8.5 11h5"/></svg></button>
     <button id="zoomIn" title="Zoom in (Ctrl + scroll)" aria-label="Zoom in"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l5 5M8.5 11h5M11 8.5v5"/></svg></button>
+    <button id="passKey" title="Permanent password" aria-label="Permanent password"><svg viewBox="0 0 24 24"><circle cx="8" cy="15" r="3.5"/><path d="M10.5 12.5L19 4m-3 3l2.5 2.5M14 9l2 2"/></svg></button>
+    <button id="gear" title="Options" aria-label="Options"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v2.5M12 18.5V21M3 12h2.5M18.5 12H21M5.6 5.6l1.8 1.8M16.6 16.6l1.8 1.8M5.6 18.4l1.8-1.8M16.6 7.4l1.8-1.8"/></svg></button>
     <button id="keys" title="Keyboard" aria-label="Keyboard"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M7 10h.01M11 10h.01M15 10h.01M7 14h10"/></svg></button>
     <button id="full" title="Full screen" aria-label="Full screen"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
     <button id="leave" title="Disconnect" aria-label="Disconnect"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
@@ -131,6 +182,70 @@
   <div id="cover"><div><b id="coverTitle">Connecting…</b><span id="coverText"></span></div></div>
   <input id="typer" aria-hidden="true" tabindex="-1" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
 </div>
+
+<div class="toast" id="toast" hidden role="status"></div>
+
+<dialog id="options" aria-labelledby="optionsTitle">
+  <form method="dialog" id="optionsForm">
+    <h2 id="optionsTitle">Options</h2>
+
+    <h3>Link</h3>
+    <label class="field"><span>Connection service (PeerJS broker)</span><input id="optBroker" type="url" spellcheck="false" placeholder="wss://0.peerjs.com/peerjs"></label>
+    <label class="field"><span>STUN servers, one per line</span><textarea id="optStun" spellcheck="false"></textarea></label>
+    <label class="field"><span>TURN relay (optional): address</span><input id="optTurn" type="text" spellcheck="false" placeholder="turn:example.com:3478"></label>
+    <div class="row">
+      <label class="field" style="flex:1"><span>TURN user</span><input id="optTurnUser" type="text" autocomplete="off" spellcheck="false"></label>
+      <label class="field" style="flex:1"><span>TURN password</span><input id="optTurnPass" type="password" autocomplete="off"></label>
+    </div>
+    <div class="field"><span>Path</span>
+      <div class="seg" role="radiogroup" aria-label="Path">
+        <label><input type="radio" name="optPolicy" value="all"> Best available</label>
+        <label><input type="radio" name="optPolicy" value="relay"> Always via TURN</label>
+      </div>
+    </div>
+
+    <h3>Picture</h3>
+    <div class="field"><span>Scaling</span>
+      <div class="seg" role="radiogroup" aria-label="Scaling">
+        <label><input type="radio" name="optFit" value="contain"> Fit whole screen</label>
+        <label><input type="radio" name="optFit" value="cover"> Fill the window</label>
+      </div>
+    </div>
+    <label class="check"><input id="optPointer" type="checkbox"> Show where the PC's pointer is</label>
+    <label class="check"><input id="optStats" type="checkbox"> Show frames per second</label>
+    <label class="check"><input id="optAutohide" type="checkbox"> Hide the bar when idle</label>
+
+    <h3>Input</h3>
+    <label class="field"><span>Scroll speed <b id="optScrollOut"></b></span><input id="optScroll" type="range" min="0.25" max="4" step="0.25"></label>
+    <label class="check"><input id="optNatural" type="checkbox"> Natural scrolling for the mouse wheel (touch always follows your fingers)</label>
+    <label class="check"><input id="optLong" type="checkbox"> Long-press to right-click on a touch screen</label>
+
+    <h3>Behaviour</h3>
+    <label class="check"><input id="optReconnect" type="checkbox"> Reconnect on its own when the link drops</label>
+    <label class="check"><input id="optWake" type="checkbox"> Keep this screen awake while connected</label>
+
+    <div class="actions">
+      <button class="btn ghost" value="cancel" type="submit" formnovalidate>Cancel</button>
+      <button class="btn" id="optSave" value="save" type="submit">Save</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="pwDialog" aria-labelledby="pwTitle">
+  <form method="dialog" id="pwForm" autocomplete="off">
+    <h2 id="pwTitle">Permanent password</h2>
+    <p class="hint">Type it once here. Only a derived key is sent to your PC; the password itself never leaves this page. After this, any browser can sign in with the PC link and this password.</p>
+    <label class="field"><span>New password</span><input id="pw1" type="password" autocomplete="new-password"></label>
+    <div class="strength" aria-hidden="true"><i id="pwBar"></i></div>
+    <label class="field"><span>Again</span><input id="pw2" type="password" autocomplete="new-password"></label>
+    <p class="hint" id="pwHint">At least 10 characters. Four or more random words beat a short clever one.</p>
+    <div class="actions">
+      <button class="btn ghost" id="pwOff" value="off" type="button">Remove password</button>
+      <button class="btn ghost" value="cancel" type="submit" formnovalidate>Cancel</button>
+      <button class="btn" id="pwSave" value="save" type="submit" disabled>Set password</button>
+    </div>
+  </form>
+</dialog>
 
 <script>
 'use strict';
@@ -147,9 +262,15 @@
  */
 
 // ── constants ──────────────────────────────────────────────────────────────────────────────────
-const BROKER = 'wss://0.peerjs.com/peerjs';
-const ICE = [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun.cloudflare.com:3478'] }];
-const C = { HELLO: 1, ROI: 2, INPUT: 3, PING: 4, IDENT: 5, TEXT: 6, AUTH: 9, PAIR: 10 };
+const DEFAULTS = {
+  broker: 'wss://0.peerjs.com/peerjs',
+  stun: ['stun:stun.l.google.com:19302', 'stun:stun.cloudflare.com:3478'],
+  turn: '', turnUser: '', turnPass: '', policy: 'all',
+  fit: 'contain', pointer: true, stats: true, autohide: true,
+  scroll: 1, natural: false, longpress: true, reconnect: true, wake: true,
+};
+const PBKDF2_ROUNDS = 200000;
+const C = { HELLO: 1, ROI: 2, INPUT: 3, PING: 4, IDENT: 5, TEXT: 6, AUTH: 9, PAIR: 10, PASSWORD: 12, SETPASS: 13 };
 const S = { CONFIG: 0x81, FRAME: 0x82, IDENT: 0x83, PONG: 0x84, FOCUS: 0x85, CURSOR: 0x86, AUDIO: 0x87,
             CHALLENGE: 0x88, AUTH: 0x89, FIELD: 0x8a };
 const IN = { MOVE: 1, BUTTON: 3, SCROLL: 4, KEY: 5 };
@@ -187,6 +308,8 @@ const KEY = 'freewatch.web.v1';
 let mem = (() => { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch { return {}; } })();
 mem.clientId ||= rand(8);
 mem.pcs ||= [];
+mem.settings = { ...DEFAULTS, ...(mem.settings || {}) };
+const cfg = () => mem.settings;
 const persist = () => { try { localStorage.setItem(KEY, JSON.stringify(mem)); } catch { /* private window */ } };
 persist();
 
@@ -206,6 +329,18 @@ for (let i = 0; i < 10; i++) { VK['Digit' + i] = 0x30 + i; VK['Numpad' + i] = 0x
 for (let i = 1; i <= 12; i++) VK['F' + i] = 0x6f + i;
 const MODIFIER_CODES = new Set(['ShiftLeft', 'ShiftRight', 'ControlLeft', 'ControlRight', 'AltLeft', 'AltRight', 'MetaLeft', 'MetaRight']);
 
+const brokerUrl = () => {
+  const u = (cfg().broker || DEFAULTS.broker).trim().replace(/\/+$/, '');
+  return /^wss?:\/\//.test(u) ? u : DEFAULTS.broker;
+};
+const iceServers = () => {
+  const servers = [];
+  const stun = cfg().stun.filter((x) => x.trim());
+  if (stun.length) servers.push({ urls: stun });
+  if (cfg().turn.trim()) servers.push({ urls: cfg().turn.trim(), username: cfg().turnUser, credential: cfg().turnPass });
+  return servers;
+};
+
 // ── the link: broker, WebRTC, one data channel ────────────────────────────────────────────────
 /**
  * Open a data channel to the PC registered under `target`. Resolves with `{ send, close }` once the
@@ -215,7 +350,7 @@ function openLink(target, on) {
   return new Promise((resolve, reject) => {
     const me = 'fwweb' + rand(7);
     const connection = 'dc_' + rand(6);
-    const ws = new WebSocket(`${BROKER}?key=peerjs&id=${me}&token=${rand(6)}&version=1.5.4`);
+    const ws = new WebSocket(`${brokerUrl()}?key=peerjs&id=${me}&token=${rand(6)}&version=1.5.4`);
     let pc = null, channel = null, beat = null, settled = false, closed = false;
     const finish = (error) => {
       if (settled) return;
@@ -241,7 +376,7 @@ function openLink(target, on) {
       try {
         if (m.type === 'OPEN') {
           beat = setInterval(() => say({ type: 'HEARTBEAT' }), 10000);
-          pc = new RTCPeerConnection({ iceServers: ICE });
+          pc = new RTCPeerConnection({ iceServers: iceServers(), iceTransportPolicy: cfg().policy === 'relay' ? 'relay' : 'all' });
           channel = pc.createDataChannel(connection, { ordered: true });
           channel.binaryType = 'arraybuffer';
           channel.onopen = () => {
@@ -288,9 +423,13 @@ function openLink(target, on) {
 
 // ── one session with one PC ───────────────────────────────────────────────────────────────────
 class Session {
-  /** `pc` is a saved PC to reconnect to, or null with `code` to pair with whichever PC shows it. */
+  /**
+   * `pc` is a PC to reconnect to: with a `secret` it is a paired device, with a `key` a password
+   * sign-in. With no `pc`, `code` pairs with whichever PC shows that code.
+   */
   constructor(pc, code, ui) {
     this.pc = pc; this.code = code; this.ui = ui;
+    this.mode = code ? 'code' : pc && pc.key ? 'password' : 'device';
     this.buf = new Uint8Array(0);
     this.link = null; this.alive = false; this.over = false;
     this.nonce = null; this.host = null; this.authed = false;
@@ -300,6 +439,7 @@ class Session {
 
   async connect() {
     const target = this.code ? 'freewatch-pair-' + normaliseCode(this.code) : 'freewatch-' + this.pc.hostId;
+    this.target = target;
     this.ui.status('Finding your PC…');
     this.link = await openLink(target, { bytes: (b) => this.receive(b), close: () => this.ended() });
     this.alive = true;
@@ -387,6 +527,9 @@ class Session {
     if (this.code) {
       const code = enc.encode(normaliseCode(this.code));
       this.send(new Out().u8(C.PAIR).u8(code.length).raw(code).done());
+    } else if (this.mode === 'password') {
+      const proof = await hmac(unhex(this.pc.key), 'freewatch/1 password client', nonce);
+      this.send(concat(Uint8Array.of(C.PASSWORD), proof));
     } else {
       const proof = await hmac(unhex(this.pc.secret), 'freewatch/1 client', nonce);
       const id = enc.encode(this.pc.credId);
@@ -397,7 +540,8 @@ class Session {
   async onAuth(result, rest) {
     const fail = (text) => { this.fatal = text; this.close(); this.ui.ended(text, this); };
     if (result === AUTH.OK) {
-      const expected = await hmac(unhex(this.pc.secret), 'freewatch/1 host', this.nonce);
+      const secret = this.mode === 'password' ? this.pc.key : this.pc.secret;
+      const expected = await hmac(unhex(secret), 'freewatch/1 host', this.nonce);
       if (!same(rest, expected)) return fail('Something answered as that PC but could not prove it is. Not connecting.');
     } else if (result === AUTH.PAIRED) {
       const idLen = rest[0];
@@ -408,16 +552,23 @@ class Session {
       persist();
       this.code = null;
     } else if (result === AUTH.DENIED) {
+      if (this.mode === 'password') return fail('That PC has no password set. Pair a device first and set one from the key button.');
       mem.pcs = mem.pcs.filter((p) => !this.pc || p.hostId !== this.pc.hostId);
       persist();
       return fail('That PC no longer recognises this browser. Pair it again with a new code.');
     } else if (result === AUTH.LOCKED) {
-      return fail('Too many wrong codes. The PC is showing a new one.');
+      return fail(this.mode === 'password'
+        ? 'The PC is making you wait after wrong tries, or is not accepting new sign-ins. Try again in a minute.'
+        : 'Too many wrong codes, or the PC is not accepting new devices right now.');
     } else {
-      return fail('That code did not match. Check the PC and try again.');
+      return fail(this.mode === 'password' ? 'Wrong password.' : 'That code did not match. Check the PC and try again.');
     }
     this.authed = true;
-    if (this.pc) { this.pc.last = Date.now(); persist(); }
+    if (this.mode === 'password' && this.host) {
+      this.pc.name = this.host.name || this.pc.name;
+      // A password sign-in is kept only when asked for, and then as the derived key, never the password.
+      if (this.pc.remember) { mem.pcs = mem.pcs.filter((p) => p.hostId !== this.pc.hostId).concat({ hostId: this.pc.hostId, name: this.pc.name, key: this.pc.key, last: Date.now() }); persist(); }
+    } else if (this.pc) { this.pc.last = Date.now(); persist(); }
     this.ui.authed(this.pc, this);
   }
 
@@ -455,6 +606,19 @@ class Session {
     const payload = key && !hasNal(data, 7) ? concat(this.cfg.csd, data) : data;
     this.decoder.decode(new EncodedVideoChunk({ type: key ? 'key' : 'delta', timestamp: ts, data: payload }));
   }
+}
+
+/** The key a password becomes. The PC id is the salt, so the same password is a different key on every PC. */
+async function passwordKey(password, hostId) {
+  const base = await crypto.subtle.importKey('raw', enc.encode(password.normalize('NFKC')), 'PBKDF2', false, ['deriveBits']);
+  const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', iterations: PBKDF2_ROUNDS, salt: enc.encode('freewatch/1 password ' + hostId) }, base, 256);
+  return hex(new Uint8Array(bits));
+}
+
+/** A PC id from what someone pasted: the bare id, or the web link that carries it. */
+function hostIdFrom(text) {
+  const m = String(text).match(/(?:pc=)?([0-9a-f]{16})\b/i);
+  return m ? m[1].toLowerCase() : null;
 }
 
 async function hmac(secret, label, nonce) {
@@ -506,7 +670,8 @@ const ui = {
     this.lastPicture = performance.now();
     this.resize();
     canvas.focus();
-    try { navigator.wakeLock && navigator.wakeLock.request('screen').then((l) => (this.wake = l)).catch(() => {}); } catch {}
+    applyOptions();
+    try { cfg().wake && navigator.wakeLock && navigator.wakeLock.request('screen').then((l) => (this.wake = l)).catch(() => {}); } catch {}
     renderSaved();
     // Connected but nothing to show usually means the PC is locked or asleep.
     clearInterval(this.watch);
@@ -543,7 +708,7 @@ const ui = {
 
   /** Scale and offset that fit the requested crop inside the canvas, centred. */
   fit() {
-    const v = this.view, s = Math.min(canvas.width / v.w, canvas.height / v.h);
+    const v = this.view, pick = cfg().fit === 'cover' ? Math.max : Math.min, s = pick(canvas.width / v.w, canvas.height / v.h);
     return { s, ox: (canvas.width - v.w * s) / 2, oy: (canvas.height - v.h * s) / 2 };
   },
 
@@ -555,7 +720,7 @@ const ui = {
     // the old picture stretched into place until the sharper one arrives.
     ctx.imageSmoothingQuality = 'high';
     ctx.drawImage(this.frame, ox + (r[0] - v.x) * s, oy + (r[1] - v.y) * s, r[2] * s, r[3] * s);
-    if (this.cursorAt) {
+    if (this.cursorAt && cfg().pointer) {
       const x = ox + (this.cursorAt[0] - v.x) * s, y = oy + (this.cursorAt[1] - v.y) * s, u = this.dpr;
       ctx.lineWidth = 2 * u; ctx.strokeStyle = 'rgba(0,0,0,.55)'; ctx.fillStyle = '#ff7a5c';
       ctx.beginPath(); ctx.arc(x, y, 6 * u, 0, 7); ctx.fill(); ctx.stroke();
@@ -606,6 +771,7 @@ const ui = {
     clearInterval(this.watch);
     $('dot').classList.remove('live');
     if (reason) { this.leave(); this.error(reason); return; }
+    if (!cfg().reconnect) { this.leave(); this.error('The connection dropped.'); return; }
     // The link dropped. Try again, a little slower each time, for as long as the page is open.
     this.cover('Connection lost', 'Reconnecting…');
     const pc = session.pc;
@@ -631,7 +797,7 @@ async function start(pc, code, quiet) {
   if (ui.session) ui.session.close();
   const session = new Session(pc, code, ui);
   ui.session = session;
-  if (!quiet) { $('pairBtn').disabled = true; ui.status('Connecting…'); }
+  if (!quiet) { $('pairBtn').disabled = $('passBtn').disabled = true; ui.status('Connecting…'); }
   try {
     await session.connect();
   } catch (e) {
@@ -640,7 +806,7 @@ async function start(pc, code, quiet) {
     ui.session = null;
     ui.error(e.message || String(e));
   } finally {
-    $('pairBtn').disabled = false;
+    $('pairBtn').disabled = $('passBtn').disabled = false;
   }
 }
 
@@ -651,7 +817,7 @@ function renderSaved() {
   for (const pc of mem.pcs.slice().sort((a, b) => (b.last || 0) - (a.last || 0))) {
     const row = document.createElement('div'); row.className = 'pc';
     const name = document.createElement('span'); name.className = 'name'; name.textContent = pc.name;
-    const meta = document.createElement('span'); meta.className = 'meta'; meta.textContent = pc.last ? 'Last used ' + new Date(pc.last).toLocaleDateString() : 'Paired';
+    const meta = document.createElement('span'); meta.className = 'meta'; meta.textContent = (pc.key ? 'Password · ' : '') + (pc.last ? 'Last used ' + new Date(pc.last).toLocaleDateString() : 'Paired');
     name.appendChild(meta);
     const open = document.createElement('button'); open.className = 'btn'; open.textContent = 'Connect';
     open.onclick = () => { $('msg').textContent = ''; start(pc, null, false); };
@@ -675,7 +841,139 @@ $('code').addEventListener('input', () => {
   $('code').value = t.length > 4 ? t.slice(0, 4) + '-' + t.slice(4) : t;
 });
 renderSaved();
-if (mem.pcs.length === 0) $('code').focus();
+
+// ── tabs ──
+function showTab(which) {
+  const pass = which === 'pass';
+  $('tabCode').setAttribute('aria-selected', String(!pass));
+  $('tabPass').setAttribute('aria-selected', String(pass));
+  $('pairForm').hidden = pass;
+  $('passForm').hidden = !pass;
+  $('msg').textContent = '';
+  (pass ? ($('pcid').value ? $('pass') : $('pcid')) : $('code')).focus();
+}
+$('tabCode').onclick = () => showTab('code');
+$('tabPass').onclick = () => showTab('pass');
+
+// A link from the PC carries its id after the #, so opening it lands on the password form.
+const linked = hostIdFrom(location.hash);
+const remembered = mem.lastHost || (mem.pcs.find((p) => p.key) || {}).hostId;
+if (linked) { $('pcid').value = linked; showTab('pass'); history.replaceState(null, '', location.pathname + location.search); }
+else if (remembered && mem.pcs.length === 0) $('pcid').value = remembered;
+else if (mem.pcs.length === 0) $('code').focus();
+
+$('passForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const hostId = hostIdFrom($('pcid').value), password = $('pass').value;
+  if (!hostId) { ui.error('Paste the web link from the PC, or its 16-character id.'); return; }
+  if (!password) { ui.error('Type the password.'); return; }
+  $('passBtn').disabled = true; ui.status('Working out the key…');
+  let key;
+  try { key = await passwordKey(password, hostId); } catch { ui.error('This browser could not work out the key. Use a recent Chrome, Edge or Safari over https.'); $('passBtn').disabled = false; return; }
+  mem.lastHost = hostId; persist();
+  $('pass').value = '';
+  start({ hostId, name: 'PC', key, remember: $('remember').checked }, null, false);
+});
+
+// ── toast ──
+let toastTimer = 0;
+function toast(text) {
+  $('toast').textContent = text; $('toast').hidden = false;
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => ($('toast').hidden = true), 3500);
+}
+
+// ── options ──
+function applyOptions() {
+  $('stats').hidden = !cfg().stats;
+  if (!cfg().autohide) { clearTimeout(hideTimer); $('bar').classList.remove('hide'); }
+  ui.draw();
+}
+function fillOptions() {
+  const c = cfg();
+  $('optBroker').value = c.broker; $('optStun').value = c.stun.join('\n');
+  $('optTurn').value = c.turn; $('optTurnUser').value = c.turnUser; $('optTurnPass').value = c.turnPass;
+  document.querySelector(`input[name=optPolicy][value=${c.policy}]`).checked = true;
+  document.querySelector(`input[name=optFit][value=${c.fit}]`).checked = true;
+  $('optPointer').checked = c.pointer; $('optStats').checked = c.stats; $('optAutohide').checked = c.autohide;
+  $('optScroll').value = c.scroll; $('optScrollOut').textContent = c.scroll + '×';
+  $('optNatural').checked = c.natural; $('optLong').checked = c.longpress;
+  $('optReconnect').checked = c.reconnect; $('optWake').checked = c.wake;
+}
+$('optScroll').addEventListener('input', () => ($('optScrollOut').textContent = $('optScroll').value + '×'));
+$('openOptions').onclick = () => { fillOptions(); $('options').showModal(); };
+$('gear').onclick = () => { fillOptions(); $('options').showModal(); };
+$('optionsForm').addEventListener('submit', (e) => {
+  if (e.submitter && e.submitter.value !== 'save') return;
+  const broker = $('optBroker').value.trim();
+  mem.settings = {
+    ...cfg(),
+    broker: /^wss?:\/\//.test(broker) ? broker : DEFAULTS.broker,
+    stun: $('optStun').value.split('\n').map((x) => x.trim()).filter(Boolean),
+    turn: $('optTurn').value.trim(), turnUser: $('optTurnUser').value, turnPass: $('optTurnPass').value,
+    policy: document.querySelector('input[name=optPolicy]:checked').value,
+    fit: document.querySelector('input[name=optFit]:checked').value,
+    pointer: $('optPointer').checked, stats: $('optStats').checked, autohide: $('optAutohide').checked,
+    scroll: Number($('optScroll').value) || 1, natural: $('optNatural').checked, longpress: $('optLong').checked,
+    reconnect: $('optReconnect').checked, wake: $('optWake').checked,
+  };
+  persist(); applyOptions();
+  toast('Saved. Link changes apply to the next connection.');
+});
+applyOptions();
+
+// ── the permanent password, set from a signed-in session ──
+const passwordScore = (pw) => {
+  let pool = 0;
+  if (/[a-z]/.test(pw)) pool += 26;
+  if (/[A-Z]/.test(pw)) pool += 26;
+  if (/[0-9]/.test(pw)) pool += 10;
+  if (/[^a-zA-Z0-9]/.test(pw)) pool += 32;
+  const bits = pw.length * Math.log2(Math.max(pool, 2));
+  const repeated = /^(.)\1+$/.test(pw) || /^(?:0123|1234|abcd|qwer|pass|letmein)/i.test(pw);
+  return repeated ? 0 : bits;
+};
+function checkPasswordForm() {
+  const a = $('pw1').value, b = $('pw2').value, bits = passwordScore(a);
+  $('pwBar').style.width = Math.min(100, (bits / 70) * 100) + '%';
+  $('pwBar').style.background = bits < 40 ? 'var(--danger)' : bits < 60 ? '#f5b544' : 'var(--ok)';
+  const ok = a.length >= 10 && bits >= 40 && a === b;
+  $('pwSave').disabled = !ok;
+  $('pwHint').textContent = a.length < 10 ? 'At least 10 characters. Four or more random words beat a short clever one.'
+    : bits < 40 ? 'Too guessable. Add length: a few unrelated words is enough.'
+    : a !== b ? 'The two do not match yet.' : 'Good.';
+}
+$('pw1').addEventListener('input', checkPasswordForm);
+$('pw2').addEventListener('input', checkPasswordForm);
+$('passKey').onclick = () => {
+  if (!live()) return;
+  $('pw1').value = $('pw2').value = ''; checkPasswordForm();
+  $('pwOff').hidden = false;
+  $('pwDialog').showModal(); $('pw1').focus();
+};
+$('pwOff').onclick = () => {
+  if (!live()) return;
+  ui.session.send(Uint8Array.of(C.SETPASS, 0));
+  const host = ui.session.host;
+  if (host) { mem.pcs = mem.pcs.filter((p) => !(p.key && p.hostId === host.id)); persist(); }
+  $('pwDialog').close();
+  toast('Password sign-in is off for this PC.');
+};
+$('pwForm').addEventListener('submit', async (e) => {
+  if (e.submitter && e.submitter.value !== 'save') return;
+  e.preventDefault();
+  const host = live() && ui.session.host;
+  if (!host) return;
+  $('pwSave').disabled = true;
+  const key = await passwordKey($('pw1').value, host.id);
+  if (!live()) return;
+  ui.session.send(concat(Uint8Array.of(C.SETPASS, 32), unhex(key)));
+  mem.lastHost = host.id;
+  if ($('remember').checked) mem.pcs = mem.pcs.filter((p) => !(p.key && p.hostId === host.id)).concat({ hostId: host.id, name: host.name, key, last: Date.now() });
+  persist();
+  $('pw1').value = $('pw2').value = '';
+  $('pwDialog').close();
+  toast('Password set. Open the PC link anywhere and sign in with it.');
+});
 
 // ── driving the PC ───────────────────────────────────────────────────────────────────────────
 const live = () => ui.session && ui.session.alive && ui.session.authed;
@@ -714,7 +1012,7 @@ canvas.addEventListener('pointerdown', (e) => {
   touches.set(e.pointerId, { x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, t: performance.now() });
   gesture = { moved: false, count: touches.size, dist: pinchDistance(), lastY: avg('y') };
   clearTimeout(longPress);
-  if (touches.size === 1) longPress = setTimeout(() => {
+  if (touches.size === 1 && cfg().longpress) longPress = setTimeout(() => {
     const p = touches.values().next().value; if (!p || gesture.moved) return;
     const at = ui.toSource(p.x - canvas.getBoundingClientRect().left, p.y - canvas.getBoundingClientRect().top);
     if (at) { input(IN.MOVE, at[0], at[1]); input(IN.BUTTON, 1, 1); input(IN.BUTTON, 1, 0); gesture.done = true; }
@@ -730,7 +1028,7 @@ canvas.addEventListener('pointermove', (e) => {
     const d = pinchDistance();
     if (gesture.dist && Math.abs(d - gesture.dist) > 2) { ui.zoom(d / gesture.dist, avg('x') - canvas.getBoundingClientRect().left, avg('y') - canvas.getBoundingClientRect().top); gesture.dist = d; }
     const y = avg('y'), dy = y - gesture.lastY; gesture.lastY = y;
-    if (Math.abs(dy) > 0.5 && Math.abs(d - gesture.dist) < 3) { const at = ui.toSource(canvas.clientWidth / 2, canvas.clientHeight / 2); if (at) { input(IN.MOVE, at[0], at[1]); input(IN.SCROLL, 0, Math.round(dy * 2)); } }
+    if (Math.abs(dy) > 0.5 && Math.abs(d - gesture.dist) < 3) { const at = ui.toSource(canvas.clientWidth / 2, canvas.clientHeight / 2); if (at) { input(IN.MOVE, at[0], at[1]); input(IN.SCROLL, 0, Math.round(dy * 2 * cfg().scroll)); } }
   } else if (gesture.moved && ui.view && ui.view.w < ui.src.w * 0.98) {
     // One finger on a zoomed view pans it.
     ui.pan(e.movementX || 0, e.movementY || 0);
@@ -757,11 +1055,12 @@ canvas.addEventListener('wheel', (e) => {
   // Pixels to wheel notches (a notch is 120 on the wire, about 100 browser pixels).
   const k = e.deltaMode === 1 ? 40 : e.deltaMode === 2 ? 400 : 1;
   input(IN.MOVE, at[0], at[1]);
-  input(IN.SCROLL, Math.round(e.deltaX * k * 1.2), Math.round(-e.deltaY * k * 1.2));
+  const sign = cfg().natural ? -1 : 1, speed = 1.2 * cfg().scroll * sign;
+  input(IN.SCROLL, Math.round(e.deltaX * k * speed), Math.round(-e.deltaY * k * speed));
 }, { passive: false });
 
 function keyEvent(e, down) {
-  if (!live() || e.target === $('typer')) return;
+  if (!live() || e.target === $('typer') || e.target.closest('dialog')) return;
   const vk = VK[e.code];
   const printable = e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey;
   // Characters go as characters, so they come out right whatever layout the PC has; everything
@@ -791,8 +1090,8 @@ $('zoomIn').onclick = () => ui.zoom(1.5);
 $('zoomOut').onclick = () => ui.zoom(1 / 1.5);
 $('full').onclick = () => { if (document.fullscreenElement) document.exitFullscreen(); else $('stage').requestFullscreen && $('stage').requestFullscreen().catch(() => {}); };
 $('leave').onclick = () => ui.leave();
-let hideTimer = 0;
-const showBar = () => { $('bar').classList.remove('hide'); clearTimeout(hideTimer); hideTimer = setTimeout(() => $('bar').classList.add('hide'), 3500); };
+var hideTimer = 0;
+const showBar = () => { $('bar').classList.remove('hide'); clearTimeout(hideTimer); if (cfg().autohide) hideTimer = setTimeout(() => $('bar').classList.add('hide'), 3500); };
 $('stage').addEventListener('pointermove', showBar);
 $('stage').addEventListener('pointerdown', showBar);
 window.addEventListener('resize', () => ui.resize());
@@ -802,7 +1101,7 @@ document.addEventListener('fullscreenchange', () => ui.resize());
 let last = performance.now(), lastFrames = 0;
 setInterval(() => {
   const now = performance.now(), n = ui.frames;
-  $('stats').textContent = live() && ui.frame ? Math.round(((n - lastFrames) * 1000) / (now - last)) + ' fps' : '';
+  $('stats').textContent = cfg().stats && live() && ui.frame ? Math.round(((n - lastFrames) * 1000) / (now - last)) + ' fps' : '';
   last = now; lastFrames = n;
 }, 1000);
 
