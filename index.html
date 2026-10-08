@@ -924,6 +924,7 @@ const ui = {
     if (app.sheet) { const s = app.sheet; app.sheet = null; s.onClose = null; s.close(); }
     showStage();
     panel.awaiting(this.name);
+    if (matchMedia('(pointer: coarse)').matches && innerHeight > innerWidth) toast('Tip: the rotate button gives a much bigger picture.');
     clearTimeout(this.noPicture); this.noPicture = setTimeout(() => { if (!this.pictureShown && app.session === session) panel.noPicture(this.name); }, 6000);
     this.lastPicture = performance.now();
     this.resize();
@@ -1692,7 +1693,8 @@ function showChips(keep) {
   for (const id of ['chips', 'backChips', 'leftcol']) $(id).classList.remove('hide');
   $('hud').classList.remove('idle');
   clearTimeout(hideTimer);
-  if (!keep && cfg().autohide) hideTimer = setTimeout(() => {
+  // On a touch screen a tap that only reveals the buttons would also click the PC, so they stay.
+  if (!keep && cfg().autohide && !matchMedia('(pointer: coarse)').matches) hideTimer = setTimeout(() => {
     if (compose() || modsOpen || !ui.pictureShown) return;
     for (const id of ['chips', 'backChips', 'leftcol']) $(id).classList.add('hide');
     $('hud').classList.add('idle');
