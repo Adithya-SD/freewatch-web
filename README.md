@@ -6,5 +6,6 @@ Your PC in a browser: <https://freewatch-brinjal.vercel.app/> (backup: <https://
 - **Sign in with just a password: set it in FreeWatch on the PC (Advanced settings), then type it here. It finds your PC and proves it is you; use a long phrase.
 - The picture travels straight between your PC and the browser (WebRTC, encrypted). This page is a static file; nothing runs on a server.
 - The password never leaves the page. Both ends turn it into a key with PBKDF2 (600,000 rounds); the key answers a fresh challenge each time, and a name made from it is how the PC is found, so the password alone is enough. The PC makes you wait after wrong tries. Use a long phrase: a short word with a number can be guessed offline.
-- Options (link, TURN relay, scaling, scroll, reconnect) are under *Connection options* and the gear.
+- The same screens, wording and settings as the FreeWatch phone app: home, pairing and password sheets, connection panel, keyboard / sound / PC-screen chips, compose bar, *Picture effort*.
+- From another network (mobile data especially) a direct path often cannot open. The page says why, *Check my connection* shows what the network allows, and a TURN relay set under *Settings, Internet relay* fixes it.
 - Needs a recent Chrome, Edge or Safari (WebCodecs) and the FreeWatch host on the PC.
