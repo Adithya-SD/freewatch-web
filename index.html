@@ -1,0 +1,813 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark light">
+<title>FreeWatch</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='15' fill='%23ff7a5c'/%3E%3Ccircle cx='16' cy='16' r='9' fill='none' stroke='white' stroke-width='3'/%3E%3Ccircle cx='23' cy='9' r='2.4' fill='white'/%3E%3C/svg%3E">
+<style>
+  /* Layout: one centred column to connect, then the picture edge to edge with a bar that hides. */
+  :root {
+    --bg: #f4f4f1; --surface: #ffffff; --raised: #ecece8; --line: #e0e0db;
+    --text: #17181b; --dim: #5e626b; --faint: #92959c;
+    --accent: #ec5a38; --on-accent: #ffffff; --ok: #16a864; --danger: #d93636;
+    --stage: #1a1b1f;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0f1013; --surface: #17181c; --raised: #202227; --line: #2a2c33;
+      --text: #ededef; --dim: #9a9da6; --faint: #62656e;
+      --accent: #ff7a5c; --on-accent: #1a0e0b; --ok: #3dd68c; --danger: #ff5f5f;
+      --stage: #08090b; color-scheme: dark;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: var(--bg); color: var(--text);
+    font: 15px/1.45 system-ui, -apple-system, "Segoe UI Variable Text", "Segoe UI", sans-serif;
+    -webkit-font-smoothing: antialiased; overflow: hidden;
+  }
+  button, input { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  /* ── connect ── */
+  #connect { height: 100%; overflow: auto; display: grid; place-items: center; padding: 24px 16px; }
+  .card { width: min(440px, 100%); display: grid; gap: 22px; }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .mark { width: 34px; height: 34px; }
+  h1 { font-size: 22px; margin: 0; letter-spacing: -0.01em; }
+  .sub { color: var(--dim); margin: 2px 0 0; }
+  .label { font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--faint); margin: 0 0 8px; }
+  .list { display: grid; gap: 8px; }
+  .pc { display: flex; align-items: center; gap: 12px; background: var(--surface); border: 1px solid var(--line);
+        border-radius: 14px; padding: 12px 14px; }
+  .pc .name { font-weight: 600; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pc .meta { color: var(--faint); font-size: 12px; font-weight: 400; display: block; }
+  .btn { border: 0; border-radius: 10px; padding: 9px 16px; background: var(--accent); color: var(--on-accent); font-weight: 600; }
+  .btn:disabled { opacity: 0.5; cursor: default; }
+  .ghost { background: transparent; color: var(--dim); border: 1px solid var(--line); font-weight: 500; }
+  .link { background: none; border: 0; color: var(--faint); padding: 6px; font-size: 12px; }
+  .pair { display: grid; gap: 10px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px; }
+  .pair input {
+    width: 100%; background: var(--raised); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px;
+    font-size: 22px; letter-spacing: 0.18em; text-transform: uppercase; text-align: center; font-weight: 600;
+  }
+  .hint { color: var(--dim); font-size: 13px; margin: 0; }
+  #msg { min-height: 20px; margin: 0; font-size: 14px; }
+  #msg.err { color: var(--danger); }
+  #msg.busy { color: var(--dim); }
+  .fine { color: var(--faint); font-size: 12px; margin: 0; }
+
+  /* ── stage ── */
+  #stage { position: fixed; inset: 0; background: var(--stage); touch-action: none; user-select: none; }
+  #view { position: absolute; inset: 0; width: 100%; height: 100%; display: block; outline: none; cursor: none; }
+  #bar {
+    position: absolute; top: calc(env(safe-area-inset-top, 0px) + 10px); left: 50%; transform: translateX(-50%);
+    display: flex; align-items: center; gap: 4px; padding: 5px 6px; border-radius: 999px;
+    background: color-mix(in srgb, var(--surface) 88%, transparent); border: 1px solid var(--line);
+    backdrop-filter: blur(10px); box-shadow: 0 6px 24px rgba(0,0,0,.28);
+    transition: opacity .25s, transform .25s; max-width: calc(100% - 20px);
+  }
+  #bar.hide { opacity: 0; transform: translate(-50%, -8px); pointer-events: none; }
+  #bar .who { display: flex; align-items: center; gap: 8px; padding: 0 10px; font-weight: 600; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #dot { width: 8px; height: 8px; border-radius: 50%; background: var(--faint); flex: none; }
+  #dot.live { background: var(--ok); }
+  #bar button { width: 34px; height: 34px; border-radius: 50%; border: 0; background: transparent; color: var(--text); display: grid; place-items: center; }
+  #bar button:hover { background: var(--raised); }
+  #bar svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  #stats { font-size: 11px; color: var(--dim); padding: 0 8px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  #cover {
+    position: absolute; inset: 0; display: grid; place-items: center; text-align: center; padding: 24px;
+    background: color-mix(in srgb, var(--stage) 82%, transparent); color: #ededef;
+  }
+  #cover[hidden] { display: none; }
+  #cover b { display: block; font-size: 18px; margin-bottom: 6px; }
+  #cover span { color: #9a9da6; }
+  #typer { position: fixed; left: -100px; top: 0; width: 1px; height: 1px; opacity: 0; }
+</style>
+</head>
+<body>
+
+<main id="connect">
+  <div class="card">
+    <div class="brand">
+      <svg class="mark" viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="15" fill="var(--accent)"/><circle cx="16" cy="16" r="9" fill="none" stroke="#fff" stroke-width="3"/><circle cx="23" cy="9" r="2.4" fill="#fff"/></svg>
+      <div><h1>FreeWatch</h1><p class="sub">Your PC, in this browser.</p></div>
+    </div>
+
+    <section id="saved" hidden>
+      <p class="label">Your PCs</p>
+      <div class="list" id="pcs"></div>
+    </section>
+
+    <section>
+      <p class="label" id="pairLabel">Pair a PC</p>
+      <form class="pair" id="pairForm" autocomplete="off">
+        <input id="code" inputmode="text" maxlength="9" placeholder="ABCD-1234" aria-labelledby="pairLabel" autocapitalize="characters" spellcheck="false">
+        <button class="btn" id="pairBtn" type="submit">Pair</button>
+        <p class="hint">Type the code FreeWatch shows on your PC. It works once, from anywhere.</p>
+      </form>
+    </section>
+
+    <p id="msg" role="status"></p>
+    <p class="fine">The picture travels straight between your PC and this browser, encrypted. This page keeps a secret key for each PC in this browser only; clearing site data forgets them.</p>
+  </div>
+</main>
+
+<div id="stage" hidden>
+  <canvas id="view" tabindex="0" aria-label="Remote screen"></canvas>
+  <div id="bar" role="toolbar" aria-label="Remote controls">
+    <span class="who"><span id="dot"></span><span id="pcname">PC</span></span>
+    <span id="stats"></span>
+    <button id="zoomOut" title="Zoom out (Ctrl + scroll)" aria-label="Zoom out"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l5 5M8.5 11h5"/></svg></button>
+    <button id="zoomIn" title="Zoom in (Ctrl + scroll)" aria-label="Zoom in"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l5 5M8.5 11h5M11 8.5v5"/></svg></button>
+    <button id="keys" title="Keyboard" aria-label="Keyboard"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M7 10h.01M11 10h.01M15 10h.01M7 14h10"/></svg></button>
+    <button id="full" title="Full screen" aria-label="Full screen"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+    <button id="leave" title="Disconnect" aria-label="Disconnect"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+  </div>
+  <div id="cover"><div><b id="coverTitle">Connecting…</b><span id="coverText"></span></div></div>
+  <input id="typer" aria-hidden="true" tabindex="-1" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
+</div>
+
+<script>
+'use strict';
+/*
+ * FreeWatch in a browser.
+ *
+ * The same conversation the phone app has with the PC, from a web page: find the PC through the
+ * PeerJS broker, open one WebRTC data channel to it, prove which PC it is and which browser this
+ * is with an HMAC challenge, then read H.264 frames off the channel and decode them with WebCodecs.
+ * Nothing is installed and nothing is hosted: this file is the whole client.
+ *
+ * The wire protocol is documented in host/src/net.rs and android/shared/.../Protocol.kt; the
+ * numbers below are those.
+ */
+
+// ── constants ──────────────────────────────────────────────────────────────────────────────────
+const BROKER = 'wss://0.peerjs.com/peerjs';
+const ICE = [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun.cloudflare.com:3478'] }];
+const C = { HELLO: 1, ROI: 2, INPUT: 3, PING: 4, IDENT: 5, TEXT: 6, AUTH: 9, PAIR: 10 };
+const S = { CONFIG: 0x81, FRAME: 0x82, IDENT: 0x83, PONG: 0x84, FOCUS: 0x85, CURSOR: 0x86, AUDIO: 0x87,
+            CHALLENGE: 0x88, AUTH: 0x89, FIELD: 0x8a };
+const IN = { MOVE: 1, BUTTON: 3, SCROLL: 4, KEY: 5 };
+const AUTH = { OK: 0, PAIRED: 1, DENIED: 2, BAD_CODE: 3, LOCKED: 4 };
+const enc = new TextEncoder();
+const dec = new TextDecoder();
+const $ = (id) => document.getElementById(id);
+
+// ── small helpers ──────────────────────────────────────────────────────────────────────────────
+const hex = (b) => Array.from(b, (x) => x.toString(16).padStart(2, '0')).join('');
+const unhex = (s) => Uint8Array.from(s.match(/../g) || [], (h) => parseInt(h, 16));
+const rand = (n) => hex(crypto.getRandomValues(new Uint8Array(n)));
+const concat = (...parts) => {
+  const out = new Uint8Array(parts.reduce((n, p) => n + p.length, 0));
+  let at = 0;
+  for (const p of parts) { out.set(p, at); at += p.length; }
+  return out;
+};
+const same = (a, b) => a.length === b.length && a.every((v, i) => v === b[i]);
+const normaliseCode = (s) => s.toUpperCase().replace(/[-\s]/g, '').replace(/O/g, '0').replace(/[IL]/g, '1');
+const looksLikeCode = (s) => /^[0-9A-HJKMNP-TV-Z]{8}$/.test(normaliseCode(s));
+
+/** Build a message from numbers, big-endian, the way the protocol wants. */
+class Out {
+  constructor() { this.a = []; }
+  u8(v) { this.a.push(v & 255); return this; }
+  u16(v) { return this.u8(v >> 8).u8(v); }
+  i32(v) { return this.u8(v >> 24).u8(v >> 16).u8(v >> 8).u8(v); }
+  raw(b) { for (const x of b) this.a.push(x); return this; }
+  done() { return Uint8Array.from(this.a); }
+}
+
+// ── what this browser remembers ───────────────────────────────────────────────────────────────
+const KEY = 'freewatch.web.v1';
+let mem = (() => { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch { return {}; } })();
+mem.clientId ||= rand(8);
+mem.pcs ||= [];
+const persist = () => { try { localStorage.setItem(KEY, JSON.stringify(mem)); } catch { /* private window */ } };
+persist();
+
+// ── keys: browser codes to Windows virtual-key codes ──────────────────────────────────────────
+const VK = {
+  Backspace: 0x08, Tab: 0x09, Enter: 0x0d, NumpadEnter: 0x0d, Escape: 0x1b, Space: 0x20,
+  PageUp: 0x21, PageDown: 0x22, End: 0x23, Home: 0x24, ArrowLeft: 0x25, ArrowUp: 0x26,
+  ArrowRight: 0x27, ArrowDown: 0x28, Insert: 0x2d, Delete: 0x2e, CapsLock: 0x14,
+  ShiftLeft: 0x10, ShiftRight: 0x10, ControlLeft: 0x11, ControlRight: 0x11, AltLeft: 0x12, AltRight: 0x12,
+  MetaLeft: 0x5b, MetaRight: 0x5c, ContextMenu: 0x5d, PrintScreen: 0x2c, Pause: 0x13,
+  NumpadMultiply: 0x6a, NumpadAdd: 0x6b, NumpadSubtract: 0x6d, NumpadDecimal: 0x6e, NumpadDivide: 0x6f,
+  Semicolon: 0xba, Equal: 0xbb, Comma: 0xbc, Minus: 0xbd, Period: 0xbe, Slash: 0xbf, Backquote: 0xc0,
+  BracketLeft: 0xdb, Backslash: 0xdc, BracketRight: 0xdd, Quote: 0xde,
+};
+for (let i = 0; i < 26; i++) VK['Key' + String.fromCharCode(65 + i)] = 0x41 + i;
+for (let i = 0; i < 10; i++) { VK['Digit' + i] = 0x30 + i; VK['Numpad' + i] = 0x60 + i; }
+for (let i = 1; i <= 12; i++) VK['F' + i] = 0x6f + i;
+const MODIFIER_CODES = new Set(['ShiftLeft', 'ShiftRight', 'ControlLeft', 'ControlRight', 'AltLeft', 'AltRight', 'MetaLeft', 'MetaRight']);
+
+// ── the link: broker, WebRTC, one data channel ────────────────────────────────────────────────
+/**
+ * Open a data channel to the PC registered under `target`. Resolves with `{ send, close }` once the
+ * channel is open; `on.bytes` gets every message, `on.close` fires once when it ends.
+ */
+function openLink(target, on) {
+  return new Promise((resolve, reject) => {
+    const me = 'fwweb' + rand(7);
+    const connection = 'dc_' + rand(6);
+    const ws = new WebSocket(`${BROKER}?key=peerjs&id=${me}&token=${rand(6)}&version=1.5.4`);
+    let pc = null, channel = null, beat = null, settled = false, closed = false;
+    const finish = (error) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      if (error) { shutdown(); reject(error instanceof Error ? error : new Error(error)); }
+    };
+    const shutdown = () => {
+      clearInterval(beat);
+      try { ws.close(); } catch {}
+      try { channel && channel.close(); } catch {}
+      try { pc && pc.close(); } catch {}
+    };
+    const timer = setTimeout(() => finish('Could not reach that PC. Is it on and running FreeWatch?'), 25000);
+    const say = (m) => ws.readyState === 1 && ws.send(JSON.stringify(m));
+
+    ws.onerror = () => finish('Could not reach the connection service. Check your internet.');
+    ws.onclose = () => { if (!settled) finish('The connection service closed the link.'); };
+    ws.onmessage = async (event) => {
+      let m;
+      try { m = JSON.parse(event.data); } catch { return; }
+      const body = m.payload || {};
+      try {
+        if (m.type === 'OPEN') {
+          beat = setInterval(() => say({ type: 'HEARTBEAT' }), 10000);
+          pc = new RTCPeerConnection({ iceServers: ICE });
+          channel = pc.createDataChannel(connection, { ordered: true });
+          channel.binaryType = 'arraybuffer';
+          channel.onopen = () => {
+            clearInterval(beat);
+            try { ws.close(); } catch {}
+            settled = true; clearTimeout(timer);
+            resolve({
+              send: (bytes) => { if (channel.readyState === 'open') channel.send(bytes); },
+              buffered: () => channel.bufferedAmount,
+              close: () => { closed = true; shutdown(); },
+            });
+          };
+          channel.onmessage = (e) => on.bytes(new Uint8Array(e.data));
+          channel.onclose = () => { if (!closed) { closed = true; on.close && on.close(); } };
+          pc.onicecandidate = (e) => e.candidate && say({
+            type: 'CANDIDATE', dst: target,
+            payload: { candidate: { candidate: e.candidate.candidate, sdpMid: e.candidate.sdpMid, sdpMLineIndex: e.candidate.sdpMLineIndex }, type: 'data', connectionId: connection },
+          });
+          // A network switch leaves the channel "disconnected" for tens of seconds before it is
+          // called failed; a path that has not come back in eight seconds is not coming back.
+          let stale = null;
+          pc.onconnectionstatechange = () => {
+            const s = pc.connectionState;
+            if (s === 'failed') { if (!settled) finish('No path between this browser and the PC.'); else if (!closed) { closed = true; shutdown(); on.close && on.close(); } }
+            if (s === 'disconnected') { clearTimeout(stale); stale = setTimeout(() => { if (pc.connectionState !== 'connected' && !closed) { closed = true; shutdown(); on.close && on.close(); } }, 8000); }
+            if (s === 'connected') clearTimeout(stale);
+          };
+          const offer = await pc.createOffer();
+          await pc.setLocalDescription(offer);
+          say({ type: 'OFFER', dst: target, payload: { sdp: { type: offer.type, sdp: offer.sdp }, type: 'data', connectionId: connection, label: connection, reliable: true, serialization: 'raw', browser: 'chrome' } });
+        } else if (m.type === 'ANSWER' && body.connectionId === connection && pc) {
+          await pc.setRemoteDescription(body.sdp);
+        } else if (m.type === 'CANDIDATE' && body.connectionId === connection && pc && body.candidate) {
+          try { await pc.addIceCandidate(body.candidate); } catch {}
+        } else if (m.type === 'EXPIRE') {
+          finish('That PC is not online. Is it on, awake, and running FreeWatch?');
+        } else if (m.type === 'ID-TAKEN' || m.type === 'INVALID-KEY' || m.type === 'ERROR') {
+          finish('The connection service refused: ' + (body.msg || m.type));
+        }
+      } catch (e) { finish(e); }
+    };
+  });
+}
+
+// ── one session with one PC ───────────────────────────────────────────────────────────────────
+class Session {
+  /** `pc` is a saved PC to reconnect to, or null with `code` to pair with whichever PC shows it. */
+  constructor(pc, code, ui) {
+    this.pc = pc; this.code = code; this.ui = ui;
+    this.buf = new Uint8Array(0);
+    this.link = null; this.alive = false; this.over = false;
+    this.nonce = null; this.host = null; this.authed = false;
+    this.cfg = null; this.decoder = null; this.rois = new Map(); this.seq = 0;
+    this.pingTimer = null; this.fatal = null;
+  }
+
+  async connect() {
+    const target = this.code ? 'freewatch-pair-' + normaliseCode(this.code) : 'freewatch-' + this.pc.hostId;
+    this.ui.status('Finding your PC…');
+    this.link = await openLink(target, { bytes: (b) => this.receive(b), close: () => this.ended() });
+    this.alive = true;
+    this.ui.status('Checking that it is really your PC…');
+    const { w, h } = this.ui.viewportPixels();
+    this.send(new Out().u8(C.HELLO).u16(w).u16(h).u8(1).done());
+    const id = enc.encode(mem.clientId), name = enc.encode(this.ui.deviceName());
+    const body = new Out().u8(2).u16(0).u8(id.length).raw(id).u8(name.length).raw(name).done();
+    this.send(new Out().u8(C.IDENT).u16(body.length).raw(body).done());
+    this.pingTimer = setInterval(() => this.send(Uint8Array.of(C.PING)), 2000);
+  }
+
+  send(bytes) { if (this.link && this.alive) this.link.send(bytes); }
+
+  close() {
+    this.over = true;
+    this.alive = false;
+    clearInterval(this.pingTimer);
+    try { this.decoder && this.decoder.state !== 'closed' && this.decoder.close(); } catch {}
+    if (this.link) this.link.close();
+  }
+
+  ended() {
+    if (!this.alive) return;
+    this.alive = false;
+    clearInterval(this.pingTimer);
+    this.ui.ended(this.fatal, this);
+  }
+
+  // ── parsing: whole messages only, whatever sizes the channel delivers them in ──
+  receive(chunk) {
+    this.buf = this.buf.length ? concat(this.buf, chunk) : chunk;
+    try { this.parse(); } catch (e) { console.error(e); this.fatal = 'The PC sent something this page could not read.'; this.close(); this.ui.ended(this.fatal, this); }
+  }
+
+  parse() {
+    for (;;) {
+      const b = this.buf, n = b.length;
+      if (n < 1) return;
+      const v = new DataView(b.buffer, b.byteOffset, n);
+      let used = 0;
+      switch (b[0]) {
+        case S.IDENT: {
+          if (n < 3) return; const len = v.getUint16(1); if (n < 3 + len) return;
+          this.onIdent(b.subarray(3, 3 + len)); used = 3 + len; break;
+        }
+        case S.CHALLENGE: { if (n < 17) return; this.onChallenge(b.slice(1, 17)); used = 17; break; }
+        case S.AUTH: {
+          if (n < 2) return;
+          const result = b[1];
+          let need = 2;
+          if (result === AUTH.OK) need = 34;
+          else if (result === AUTH.PAIRED) { if (n < 3) return; need = 3 + b[2] + 32; }
+          if (n < need) return;
+          this.onAuth(result, b.slice(2, need)); used = need; break;
+        }
+        case S.CONFIG: {
+          if (n < 13) return; const csd = v.getUint32(9); if (n < 13 + csd) return;
+          this.onConfig(v.getUint16(1), v.getUint16(3), v.getUint16(5), v.getUint16(7), b.slice(13, 13 + csd)); used = 13 + csd; break;
+        }
+        case S.FRAME: {
+          if (n < 14) return; const len = v.getUint32(10); if (n < 14 + len) return;
+          this.onFrame(b[1] & 1, [v.getUint16(2), v.getUint16(4), v.getUint16(6), v.getUint16(8)], b.subarray(14, 14 + len)); used = 14 + len; break;
+        }
+        case S.PONG: used = 1; break;
+        case S.FOCUS: { if (n < 18) return; used = 18; break; }
+        case S.CURSOR: { if (n < 9) return; this.ui.cursor(v.getInt32(1), v.getInt32(5)); used = 9; break; }
+        case S.AUDIO: { if (n < 11) return; const len = v.getUint32(7); if (n < 11 + len) return; used = 11 + len; break; }
+        case S.FIELD: { if (n < 27) return; const len = v.getUint32(23); if (n < 27 + len) return; used = 27 + len; break; }
+        default: throw new Error('unknown message 0x' + b[0].toString(16));
+      }
+      this.buf = this.buf.subarray(used);
+    }
+  }
+
+  onIdent(body) {
+    const idLen = body[3];
+    const id = dec.decode(body.subarray(4, 4 + idLen));
+    const nameLen = body[4 + idLen];
+    this.host = { id, name: dec.decode(body.subarray(5 + idLen, 5 + idLen + nameLen)) };
+  }
+
+  async onChallenge(nonce) {
+    this.nonce = nonce;
+    if (this.code) {
+      const code = enc.encode(normaliseCode(this.code));
+      this.send(new Out().u8(C.PAIR).u8(code.length).raw(code).done());
+    } else {
+      const proof = await hmac(unhex(this.pc.secret), 'freewatch/1 client', nonce);
+      const id = enc.encode(this.pc.credId);
+      this.send(new Out().u8(C.AUTH).u8(id.length).raw(id).raw(proof).done());
+    }
+  }
+
+  async onAuth(result, rest) {
+    const fail = (text) => { this.fatal = text; this.close(); this.ui.ended(text, this); };
+    if (result === AUTH.OK) {
+      const expected = await hmac(unhex(this.pc.secret), 'freewatch/1 host', this.nonce);
+      if (!same(rest, expected)) return fail('Something answered as that PC but could not prove it is. Not connecting.');
+    } else if (result === AUTH.PAIRED) {
+      const idLen = rest[0];
+      const credId = dec.decode(rest.subarray(1, 1 + idLen));
+      const secret = hex(rest.subarray(1 + idLen, 33 + idLen));
+      this.pc = { hostId: this.host.id, name: this.host.name, credId, secret, last: Date.now() };
+      mem.pcs = mem.pcs.filter((p) => p.hostId !== this.pc.hostId).concat(this.pc);
+      persist();
+      this.code = null;
+    } else if (result === AUTH.DENIED) {
+      mem.pcs = mem.pcs.filter((p) => !this.pc || p.hostId !== this.pc.hostId);
+      persist();
+      return fail('That PC no longer recognises this browser. Pair it again with a new code.');
+    } else if (result === AUTH.LOCKED) {
+      return fail('Too many wrong codes. The PC is showing a new one.');
+    } else {
+      return fail('That code did not match. Check the PC and try again.');
+    }
+    this.authed = true;
+    if (this.pc) { this.pc.last = Date.now(); persist(); }
+    this.ui.authed(this.pc, this);
+  }
+
+  // ── video ──
+  onConfig(srcW, srcH, encW, encH, csd) {
+    this.cfg = { srcW, srcH, encW, encH, csd };
+    this.ui.source(srcW, srcH);
+    if (!('VideoDecoder' in window)) {
+      this.fatal = 'This browser cannot play the video. Use a recent Chrome, Edge or Safari.';
+      this.close(); this.ui.ended(this.fatal, this); return;
+    }
+    const sps = nalOfType(csd, 7);
+    if (!sps || sps.length < 4) return;
+    const codec = 'avc1.' + hex(sps.subarray(1, 4));
+    try { this.decoder && this.decoder.state !== 'closed' && this.decoder.close(); } catch {}
+    this.rois.clear();
+    this.needKey = true;
+    this.decoder = new VideoDecoder({
+      output: (frame) => this.ui.picture(frame, this.rois.get(frame.timestamp) || [0, 0, srcW, srcH]),
+      error: (e) => { console.error(e); this.ui.cover('The video stopped', 'Reconnecting…'); },
+    });
+    this.decoder.configure({ codec, codedWidth: encW, codedHeight: encH, optimizeForLatency: true, avc: { format: 'annexb' } });
+  }
+
+  onFrame(key, roi, data) {
+    if (!this.decoder || this.decoder.state !== 'configured') return;
+    if (this.needKey && !key) return;
+    // A queue this long means the page is behind; waiting for the next keyframe is the way back.
+    if (this.decoder.decodeQueueSize > 40 && !key) return;
+    this.needKey = false;
+    const ts = ++this.seq;
+    this.rois.set(ts, roi);
+    if (this.rois.size > 120) this.rois.delete(this.rois.keys().next().value);
+    // Annex-B decoding wants the headers in the stream; the PC sends them once, up front.
+    const payload = key && !hasNal(data, 7) ? concat(this.cfg.csd, data) : data;
+    this.decoder.decode(new EncodedVideoChunk({ type: key ? 'key' : 'delta', timestamp: ts, data: payload }));
+  }
+}
+
+async function hmac(secret, label, nonce) {
+  const key = await crypto.subtle.importKey('raw', secret, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  return new Uint8Array(await crypto.subtle.sign('HMAC', key, concat(enc.encode(label), nonce)));
+}
+
+/** Annex-B NAL units of one type, without their start codes. */
+function nalUnits(b) {
+  const starts = [];
+  for (let i = 0; i + 3 <= b.length; i++) if (b[i] === 0 && b[i + 1] === 0 && b[i + 2] === 1) { starts.push(i + 3); i += 2; }
+  return starts.map((from, k) => {
+    let to = k + 1 < starts.length ? starts[k + 1] - 3 : b.length;
+    while (to > from && b[to - 1] === 0) to--;
+    return b.subarray(from, to);
+  });
+}
+const nalOfType = (b, t) => nalUnits(b).find((n) => n.length && (n[0] & 31) === t);
+const hasNal = (b, t) => !!nalOfType(b.subarray(0, Math.min(b.length, 256)), t);
+
+// ── the screen, and the mouse and keyboard that drive it ─────────────────────────────────────
+const canvas = $('view');
+const ctx = canvas.getContext('2d');
+const ui = {
+  session: null, src: null, view: null, frame: null, frameRoi: null, cursorAt: null,
+  frames: 0, shown: 0, dpr: 1, roiTimer: 0, wake: null, lastMove: null, retries: 0, lastPicture: 0,
+
+  deviceName() {
+    const ua = navigator.userAgent;
+    const browser = /Edg\//.test(ua) ? 'Edge' : /Chrome\//.test(ua) ? 'Chrome' : /Firefox\//.test(ua) ? 'Firefox' : /Safari\//.test(ua) ? 'Safari' : 'Browser';
+    const os = /Windows/.test(ua) ? 'Windows' : /Android/.test(ua) ? 'Android' : /iPhone|iPad/.test(ua) ? 'iOS' : /Mac/.test(ua) ? 'Mac' : /Linux/.test(ua) ? 'Linux' : '';
+    return `Web · ${browser}${os ? ' on ' + os : ''}`;
+  },
+  viewportPixels() {
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    return { w: Math.round(window.innerWidth * dpr), h: Math.round(window.innerHeight * dpr) };
+  },
+  status(text) { $('msg').className = 'busy'; $('msg').textContent = text; $('coverTitle').textContent = text; $('coverText').textContent = ''; },
+  error(text) { $('msg').className = 'err'; $('msg').textContent = text; },
+  cover(title, text) { $('cover').hidden = false; $('coverTitle').textContent = title; $('coverText').textContent = text || ''; },
+
+  authed(pc, session) {
+    this.retries = 0;
+    $('pcname').textContent = pc ? pc.name : 'PC';
+    $('connect').hidden = true;
+    $('stage').hidden = false;
+    this.cover('Waiting for the screen…', '');
+    $('dot').classList.add('live');
+    this.lastPicture = performance.now();
+    this.resize();
+    canvas.focus();
+    try { navigator.wakeLock && navigator.wakeLock.request('screen').then((l) => (this.wake = l)).catch(() => {}); } catch {}
+    renderSaved();
+    // Connected but nothing to show usually means the PC is locked or asleep.
+    clearInterval(this.watch);
+    this.watch = setInterval(() => {
+      if (this.session !== session || !session.alive) return;
+      if (performance.now() - this.lastPicture > 6000 && !this.frame) this.cover('No picture yet', 'The PC is connected but not sending its screen. If it is locked or asleep, the picture returns once it is unlocked.');
+    }, 1500);
+  },
+
+  source(w, h) {
+    const first = !this.src || this.src.w !== w || this.src.h !== h;
+    this.src = { w, h };
+    if (first) this.view = { x: 0, y: 0, w, h };
+    this.draw();
+  },
+
+  picture(frame, roi) {
+    this.lastPicture = performance.now();
+    if (this.frame) this.frame.close();
+    this.frame = frame; this.frameRoi = roi; this.frames++;
+    if (!$('cover').hidden) $('cover').hidden = true;
+    if (!this.pending) this.pending = requestAnimationFrame(() => { this.pending = 0; this.draw(); });
+  },
+
+  cursor(x, y) { this.cursorAt = [x, y]; if (!this.pending) this.pending = requestAnimationFrame(() => { this.pending = 0; this.draw(); }); },
+
+  resize() {
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const w = Math.round(canvas.clientWidth * dpr), h = Math.round(canvas.clientHeight * dpr);
+    if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
+    this.dpr = dpr;
+    this.draw();
+  },
+
+  /** Scale and offset that fit the requested crop inside the canvas, centred. */
+  fit() {
+    const v = this.view, s = Math.min(canvas.width / v.w, canvas.height / v.h);
+    return { s, ox: (canvas.width - v.w * s) / 2, oy: (canvas.height - v.h * s) / 2 };
+  },
+
+  draw() {
+    ctx.fillStyle = '#000'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    if (!this.frame || !this.view) return;
+    const { s, ox, oy } = this.fit(), r = this.frameRoi, v = this.view;
+    // The frame is placed where its own crop sits in the current view, so a zoom in flight shows
+    // the old picture stretched into place until the sharper one arrives.
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(this.frame, ox + (r[0] - v.x) * s, oy + (r[1] - v.y) * s, r[2] * s, r[3] * s);
+    if (this.cursorAt) {
+      const x = ox + (this.cursorAt[0] - v.x) * s, y = oy + (this.cursorAt[1] - v.y) * s, u = this.dpr;
+      ctx.lineWidth = 2 * u; ctx.strokeStyle = 'rgba(0,0,0,.55)'; ctx.fillStyle = '#ff7a5c';
+      ctx.beginPath(); ctx.arc(x, y, 6 * u, 0, 7); ctx.fill(); ctx.stroke();
+      ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5 * u; ctx.stroke();
+    }
+  },
+
+  /** Canvas pixel (CSS) to a desktop pixel, or null off the desktop. */
+  toSource(cx, cy) {
+    if (!this.view || !this.src) return null;
+    const { s, ox, oy } = this.fit(), u = this.dpr;
+    const x = Math.round(this.view.x + (cx * u - ox) / s), y = Math.round(this.view.y + (cy * u - oy) / s);
+    return [Math.min(Math.max(x, 0), this.src.w - 1), Math.min(Math.max(y, 0), this.src.h - 1)];
+  },
+
+  /** Zoom by `factor` about a canvas point, keeping that point under the finger or pointer. */
+  zoom(factor, cx, cy) {
+    if (!this.view || !this.src) return;
+    const { w: sw, h: sh } = this.src, v = this.view;
+    const at = this.toSource(cx ?? canvas.clientWidth / 2, cy ?? canvas.clientHeight / 2);
+    const nw = Math.min(sw, Math.max(sw / 20, v.w / factor)), nh = nw * (sh / sw);
+    const fx = (at[0] - v.x) / v.w, fy = (at[1] - v.y) / v.h;
+    this.view = { w: nw, h: nh, x: Math.min(Math.max(at[0] - fx * nw, 0), sw - nw), y: Math.min(Math.max(at[1] - fy * nh, 0), sh - nh) };
+    this.askForView();
+    this.draw();
+  },
+
+  pan(dxCss, dyCss) {
+    if (!this.view || !this.src) return;
+    const { s } = this.fit(), u = this.dpr, v = this.view;
+    this.view = { ...v, x: Math.min(Math.max(v.x - (dxCss * u) / s, 0), this.src.w - v.w), y: Math.min(Math.max(v.y - (dyCss * u) / s, 0), this.src.h - v.h) };
+    this.askForView();
+    this.draw();
+  },
+
+  /** Tell the PC which part of the desktop to send, once the view has stopped moving. */
+  askForView() {
+    clearTimeout(this.roiTimer);
+    this.roiTimer = setTimeout(() => {
+      const v = this.view, s = this.session;
+      if (!s || !s.alive || !v) return;
+      s.send(new Out().u8(C.ROI).u16(Math.round(v.x)).u16(Math.round(v.y)).u16(Math.round(v.w)).u16(Math.round(v.h)).done());
+    }, 90);
+  },
+
+  ended(reason, session) {
+    if (session !== this.session) return;
+    clearInterval(this.watch);
+    $('dot').classList.remove('live');
+    if (reason) { this.leave(); this.error(reason); return; }
+    // The link dropped. Try again, a little slower each time, for as long as the page is open.
+    this.cover('Connection lost', 'Reconnecting…');
+    const pc = session.pc;
+    if (!pc) { this.leave(); return; }
+    const wait = Math.min(1000 * 2 ** this.retries++, 15000);
+    setTimeout(() => { if (this.session === session && !session.over) start(pc, null, true); }, wait);
+  },
+
+  leave() {
+    if (this.session) this.session.close();
+    this.session = null;
+    $('stage').hidden = true; $('connect').hidden = false;
+    if (this.frame) { this.frame.close(); this.frame = null; }
+    this.cursorAt = null;
+    try { this.wake && this.wake.release(); } catch {}
+    if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+    renderSaved();
+  },
+};
+
+async function start(pc, code, quiet) {
+  if (!window.isSecureContext || !crypto.subtle) { ui.error('This page needs https to keep your login safe. Open it from its https address.'); return; }
+  if (ui.session) ui.session.close();
+  const session = new Session(pc, code, ui);
+  ui.session = session;
+  if (!quiet) { $('pairBtn').disabled = true; ui.status('Connecting…'); }
+  try {
+    await session.connect();
+  } catch (e) {
+    if (ui.session !== session) return;
+    if (quiet) { ui.ended(null, session); return; }
+    ui.session = null;
+    ui.error(e.message || String(e));
+  } finally {
+    $('pairBtn').disabled = false;
+  }
+}
+
+// ── connect screen ───────────────────────────────────────────────────────────────────────────
+function renderSaved() {
+  const list = $('pcs'); list.textContent = '';
+  $('saved').hidden = mem.pcs.length === 0;
+  for (const pc of mem.pcs.slice().sort((a, b) => (b.last || 0) - (a.last || 0))) {
+    const row = document.createElement('div'); row.className = 'pc';
+    const name = document.createElement('span'); name.className = 'name'; name.textContent = pc.name;
+    const meta = document.createElement('span'); meta.className = 'meta'; meta.textContent = pc.last ? 'Last used ' + new Date(pc.last).toLocaleDateString() : 'Paired';
+    name.appendChild(meta);
+    const open = document.createElement('button'); open.className = 'btn'; open.textContent = 'Connect';
+    open.onclick = () => { $('msg').textContent = ''; start(pc, null, false); };
+    const forget = document.createElement('button'); forget.className = 'link'; forget.textContent = 'Forget';
+    forget.onclick = () => {
+      if (forget.dataset.armed) { mem.pcs = mem.pcs.filter((p) => p !== pc); persist(); renderSaved(); return; }
+      forget.dataset.armed = '1'; forget.textContent = 'Sure?'; setTimeout(() => { forget.dataset.armed = ''; forget.textContent = 'Forget'; }, 3000);
+    };
+    row.append(name, open, forget);
+    list.appendChild(row);
+  }
+}
+$('pairForm').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const code = $('code').value;
+  if (!looksLikeCode(code)) { ui.error('A code is eight letters and numbers, like ABCD-1234.'); return; }
+  start(null, code, false);
+});
+$('code').addEventListener('input', () => {
+  const t = normaliseCode($('code').value).slice(0, 8);
+  $('code').value = t.length > 4 ? t.slice(0, 4) + '-' + t.slice(4) : t;
+});
+renderSaved();
+if (mem.pcs.length === 0) $('code').focus();
+
+// ── driving the PC ───────────────────────────────────────────────────────────────────────────
+const live = () => ui.session && ui.session.alive && ui.session.authed;
+const input = (kind, a, b) => live() && ui.session.send(new Out().u8(C.INPUT).u8(kind).i32(a).i32(b).done());
+const typeText = (backspaces, text) => {
+  if (!live()) return;
+  const bytes = enc.encode(text);
+  ui.session.send(new Out().u8(C.TEXT).u16(backspaces).u16(bytes.length).raw(bytes).done());
+};
+const buttonOf = (e) => (e.button === 2 ? 1 : e.button === 1 ? 2 : 0);
+
+// Mouse moves are sent at most once per frame, and only the latest.
+let moveQueued = false, moveTo = null;
+function sendMove(at) {
+  moveTo = at;
+  if (moveQueued) return;
+  moveQueued = true;
+  requestAnimationFrame(() => {
+    moveQueued = false;
+    if (moveTo && live() && ui.session.link.buffered() < 64 * 1024) input(IN.MOVE, moveTo[0], moveTo[1]);
+  });
+}
+
+const touches = new Map();
+let gesture = null, longPress = 0;
+
+canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+canvas.addEventListener('pointerdown', (e) => {
+  canvas.focus();
+  canvas.setPointerCapture(e.pointerId);
+  if (e.pointerType === 'mouse') {
+    const at = ui.toSource(e.offsetX, e.offsetY); if (!at) return;
+    input(IN.MOVE, at[0], at[1]); input(IN.BUTTON, buttonOf(e), 1);
+    return;
+  }
+  touches.set(e.pointerId, { x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, t: performance.now() });
+  gesture = { moved: false, count: touches.size, dist: pinchDistance(), lastY: avg('y') };
+  clearTimeout(longPress);
+  if (touches.size === 1) longPress = setTimeout(() => {
+    const p = touches.values().next().value; if (!p || gesture.moved) return;
+    const at = ui.toSource(p.x - canvas.getBoundingClientRect().left, p.y - canvas.getBoundingClientRect().top);
+    if (at) { input(IN.MOVE, at[0], at[1]); input(IN.BUTTON, 1, 1); input(IN.BUTTON, 1, 0); gesture.done = true; }
+  }, 550);
+});
+canvas.addEventListener('pointermove', (e) => {
+  if (e.pointerType === 'mouse') { const at = ui.toSource(e.offsetX, e.offsetY); if (at) sendMove(at); return; }
+  const p = touches.get(e.pointerId); if (!p || !gesture) return;
+  p.x = e.clientX; p.y = e.clientY;
+  if (Math.hypot(p.x - p.sx, p.y - p.sy) > 8) { gesture.moved = true; clearTimeout(longPress); }
+  if (touches.size >= 2) {
+    // Two fingers: spread to zoom, drag to scroll the remote page.
+    const d = pinchDistance();
+    if (gesture.dist && Math.abs(d - gesture.dist) > 2) { ui.zoom(d / gesture.dist, avg('x') - canvas.getBoundingClientRect().left, avg('y') - canvas.getBoundingClientRect().top); gesture.dist = d; }
+    const y = avg('y'), dy = y - gesture.lastY; gesture.lastY = y;
+    if (Math.abs(dy) > 0.5 && Math.abs(d - gesture.dist) < 3) { const at = ui.toSource(canvas.clientWidth / 2, canvas.clientHeight / 2); if (at) { input(IN.MOVE, at[0], at[1]); input(IN.SCROLL, 0, Math.round(dy * 2)); } }
+  } else if (gesture.moved && ui.view && ui.view.w < ui.src.w * 0.98) {
+    // One finger on a zoomed view pans it.
+    ui.pan(e.movementX || 0, e.movementY || 0);
+  }
+});
+const lift = (e) => {
+  if (e.pointerType === 'mouse') { const at = ui.toSource(e.offsetX, e.offsetY); if (at) { input(IN.MOVE, at[0], at[1]); input(IN.BUTTON, buttonOf(e), 0); } return; }
+  const p = touches.get(e.pointerId); touches.delete(e.pointerId); clearTimeout(longPress);
+  if (p && gesture && !gesture.moved && !gesture.done && gesture.count === 1 && performance.now() - p.t < 400) {
+    const r = canvas.getBoundingClientRect(), at = ui.toSource(p.x - r.left, p.y - r.top);
+    if (at) { input(IN.MOVE, at[0], at[1]); input(IN.BUTTON, 0, 1); input(IN.BUTTON, 0, 0); }
+  }
+  if (touches.size === 0) gesture = null;
+};
+canvas.addEventListener('pointerup', lift);
+canvas.addEventListener('pointercancel', lift);
+const avg = (k) => { let s = 0; for (const p of touches.values()) s += p[k]; return s / (touches.size || 1); };
+const pinchDistance = () => { const p = [...touches.values()]; return p.length < 2 ? 0 : Math.hypot(p[0].x - p[1].x, p[0].y - p[1].y); };
+
+canvas.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  if (e.ctrlKey) { ui.zoom(Math.exp(-e.deltaY * 0.0025), e.offsetX, e.offsetY); return; }
+  const at = ui.toSource(e.offsetX, e.offsetY); if (!at) return;
+  // Pixels to wheel notches (a notch is 120 on the wire, about 100 browser pixels).
+  const k = e.deltaMode === 1 ? 40 : e.deltaMode === 2 ? 400 : 1;
+  input(IN.MOVE, at[0], at[1]);
+  input(IN.SCROLL, Math.round(e.deltaX * k * 1.2), Math.round(-e.deltaY * k * 1.2));
+}, { passive: false });
+
+function keyEvent(e, down) {
+  if (!live() || e.target === $('typer')) return;
+  const vk = VK[e.code];
+  const printable = e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey;
+  // Characters go as characters, so they come out right whatever layout the PC has; everything
+  // else — arrows, function keys, shortcuts — goes as the key it is.
+  if (printable) { e.preventDefault(); if (down) typeText(0, e.key); return; }
+  if (vk === undefined) return;
+  e.preventDefault();
+  input(IN.KEY, vk, down ? 1 : 0);
+}
+window.addEventListener('keydown', (e) => keyEvent(e, true), true);
+window.addEventListener('keyup', (e) => keyEvent(e, false), true);
+// A key held while the window loses focus would otherwise stay held on the PC.
+window.addEventListener('blur', () => { for (const code of MODIFIER_CODES) input(IN.KEY, VK[code], 0); });
+
+// The soft keyboard on a touch screen: a hidden field that gets focus, whose edits are sent.
+const typer = $('typer');
+typer.addEventListener('beforeinput', (e) => {
+  e.preventDefault();
+  if (e.inputType === 'insertText' && e.data) typeText(0, e.data);
+  else if (e.inputType === 'insertLineBreak' || e.inputType === 'insertParagraph') { input(IN.KEY, 0x0d, 1); input(IN.KEY, 0x0d, 0); }
+  else if (e.inputType.startsWith('deleteContent')) { input(IN.KEY, 0x08, 1); input(IN.KEY, 0x08, 0); }
+});
+$('keys').onclick = () => { typer.focus(); };
+
+// ── the bar ──────────────────────────────────────────────────────────────────────────────────
+$('zoomIn').onclick = () => ui.zoom(1.5);
+$('zoomOut').onclick = () => ui.zoom(1 / 1.5);
+$('full').onclick = () => { if (document.fullscreenElement) document.exitFullscreen(); else $('stage').requestFullscreen && $('stage').requestFullscreen().catch(() => {}); };
+$('leave').onclick = () => ui.leave();
+let hideTimer = 0;
+const showBar = () => { $('bar').classList.remove('hide'); clearTimeout(hideTimer); hideTimer = setTimeout(() => $('bar').classList.add('hide'), 3500); };
+$('stage').addEventListener('pointermove', showBar);
+$('stage').addEventListener('pointerdown', showBar);
+window.addEventListener('resize', () => ui.resize());
+document.addEventListener('fullscreenchange', () => ui.resize());
+
+// What is actually arriving, once a second.
+let last = performance.now(), lastFrames = 0;
+setInterval(() => {
+  const now = performance.now(), n = ui.frames;
+  $('stats').textContent = live() && ui.frame ? Math.round(((n - lastFrames) * 1000) / (now - last)) + ' fps' : '';
+  last = now; lastFrames = n;
+}, 1000);
+
+// For testing from the console: window.freewatch.
+window.freewatch = { ui, mem, start };
+</script>
+</body>
+</html>
