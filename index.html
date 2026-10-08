@@ -150,11 +150,12 @@
     </form>
 
     <form class="pair" id="passForm" autocomplete="on" role="tabpanel" aria-labelledby="tabPass" hidden>
-      <label class="field"><span>PC id or link</span><input id="pcid" type="text" autocomplete="off" spellcheck="false" placeholder="paste the web link, or its 16-character id"></label>
       <label class="field"><span>Password</span><input id="pass" type="password" autocomplete="current-password" placeholder="your permanent password"></label>
       <label class="check"><input id="remember" type="checkbox" checked> Remember on this browser</label>
       <button class="btn" id="passBtn" type="submit">Sign in</button>
-      <p class="hint">Set the password in FreeWatch on the PC (Advanced settings, Set a password), then use Copy web link there. Open that link anywhere and type the password.</p>
+      <p class="hint">The password you set in FreeWatch on the PC (Advanced settings, Set a password). It is all this needs: it finds your PC and proves it is you.</p>
+      <button class="link" id="idToggle" type="button">Two PCs with one password? Use a PC id</button>
+      <label class="field" id="idField" hidden><span>PC id or link</span><input id="pcid" type="text" autocomplete="off" spellcheck="false" placeholder="paste the web link, or its 16-character id"></label>
     </form>
 
     <div class="more">
@@ -269,7 +270,7 @@ const DEFAULTS = {
   fit: 'contain', pointer: true, stats: true, autohide: true,
   scroll: 1, natural: false, longpress: true, reconnect: true, wake: true,
 };
-const PBKDF2_ROUNDS = 200000;
+const PBKDF2_ROUNDS = 600000;
 const C = { HELLO: 1, ROI: 2, INPUT: 3, PING: 4, IDENT: 5, TEXT: 6, AUTH: 9, PAIR: 10, PASSWORD: 12, SETPASS: 13 };
 const S = { CONFIG: 0x81, FRAME: 0x82, IDENT: 0x83, PONG: 0x84, FOCUS: 0x85, CURSOR: 0x86, AUDIO: 0x87,
             CHALLENGE: 0x88, AUTH: 0x89, FIELD: 0x8a };
@@ -438,10 +439,20 @@ class Session {
   }
 
   async connect() {
-    const target = this.code ? 'freewatch-pair-' + normaliseCode(this.code) : 'freewatch-' + this.pc.hostId;
+    const target = this.code ? 'freewatch-pair-' + normaliseCode(this.code)
+      : this.pc.hostId ? 'freewatch-' + this.pc.hostId : 'freewatch-pw-' + this.pc.rendezvous;
     this.target = target;
     this.ui.status('Finding your PC…');
-    this.link = await openLink(target, { bytes: (b) => this.receive(b), close: () => this.ended() });
+    try {
+      this.link = await openLink(target, { bytes: (b) => this.receive(b), close: () => this.ended() });
+    } catch (e) {
+      // Found by password alone, a PC that is not there and a password that is wrong look the same
+      // from here, and the honest message names both.
+      if (this.mode === 'password' && !this.pc.hostId && /not online/.test(String(e.message))) {
+        throw new Error('No PC answers to that password. Check it, and that the PC is on and running FreeWatch.');
+      }
+      throw e;
+    }
     this.alive = true;
     this.ui.status('Checking that it is really your PC…');
     const { w, h } = this.ui.viewportPixels();
@@ -568,7 +579,7 @@ class Session {
     if (this.mode === 'password' && this.host) {
       this.pc.name = this.host.name || this.pc.name;
       // A password sign-in is kept only when asked for, and then as the derived key, never the password.
-      if (this.pc.remember) { mem.pcs = mem.pcs.filter((p) => p.hostId !== this.pc.hostId).concat({ hostId: this.pc.hostId, name: this.pc.name, key: this.pc.key, last: Date.now() }); persist(); }
+      if (this.pc.remember) { mem.pcs = mem.pcs.filter((p) => p.hostId !== this.host.id).concat({ hostId: this.host.id, name: this.pc.name, key: this.pc.key, last: Date.now() }); mem.lastHost = this.host.id; persist(); }
     } else if (this.pc) { this.pc.last = Date.now(); persist(); }
     this.ui.authed(this.pc, this);
   }
@@ -609,11 +620,18 @@ class Session {
   }
 }
 
-/** The key a password becomes. The PC id is the salt, so the same password is a different key on every PC. */
-async function passwordKey(password, hostId) {
+/**
+ * What a password becomes. One slow PBKDF2 gives a master; two labelled HMACs of it give the key
+ * that proves the password and the name the PC is found under, so typing the password alone is
+ * enough to find the PC and to prove it. The PC derives exactly the same (`derive_master` and
+ * `PasswordKeys` in `host/src/auth.rs`), and a test there pins the two together.
+ */
+async function passwordKeys(password) {
   const base = await crypto.subtle.importKey('raw', enc.encode(password.normalize('NFKC')), 'PBKDF2', false, ['deriveBits']);
-  const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', iterations: PBKDF2_ROUNDS, salt: enc.encode('freewatch/1 password ' + hostId) }, base, 256);
-  return hex(new Uint8Array(bits));
+  const master = new Uint8Array(await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', iterations: PBKDF2_ROUNDS, salt: enc.encode('freewatch/1 password v2') }, base, 256));
+  const mac = await crypto.subtle.importKey('raw', master, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const label = async (text) => new Uint8Array(await crypto.subtle.sign('HMAC', mac, enc.encode(text)));
+  return { master, auth: hex(await label('freewatch/1 auth')), rendezvous: hex((await label('freewatch/1 rendezvous')).subarray(0, 16)) };
 }
 
 /** A PC id from what someone pasted: the bare id, or the web link that carries it. */
@@ -851,7 +869,7 @@ function showTab(which) {
   $('pairForm').hidden = pass;
   $('passForm').hidden = !pass;
   $('msg').textContent = '';
-  (pass ? ($('pcid').value ? $('pass') : $('pcid')) : $('code')).focus();
+  (pass ? $('pass') : $('code')).focus();
 }
 $('tabCode').onclick = () => showTab('code');
 $('tabPass').onclick = () => showTab('pass');
@@ -862,7 +880,7 @@ const linkParams = new URLSearchParams(location.hash.replace(/^#/, ''));
 const linked = hostIdFrom(linkParams.get('pc') || '');
 const linkedCode = (linkParams.get('code') || '').trim();
 const remembered = mem.lastHost || (mem.pcs.find((p) => p.key) || {}).hostId;
-if (linked) { mem.lastHost = linked; persist(); $('pcid').value = linked; }
+if (linked) { mem.lastHost = linked; persist(); $('pcid').value = linked; $('idField').hidden = false; }
 if (linked || linkedCode) history.replaceState(null, '', location.pathname + location.search);
 if (linkedCode && looksLikeCode(linkedCode)) {
   const t = normaliseCode(linkedCode);
@@ -871,23 +889,23 @@ if (linkedCode && looksLikeCode(linkedCode)) {
   start(null, linkedCode, false);
 } else if (linked) {
   showTab('pass');
-} else if (remembered && mem.pcs.length === 0) {
-  $('pcid').value = remembered;
 } else if (mem.pcs.length === 0) {
   $('code').focus();
 }
 
+$('idToggle').onclick = () => { $('idField').hidden = !$('idField').hidden; if (!$('idField').hidden) $('pcid').focus(); };
 $('passForm').addEventListener('submit', async (e) => {
   e.preventDefault();
-  const hostId = hostIdFrom($('pcid').value), password = $('pass').value;
-  if (!hostId) { ui.error('Paste the web link from the PC, or its 16-character id.'); return; }
+  const password = $('pass').value;
   if (!password) { ui.error('Type the password.'); return; }
+  // An id is optional: given one, the page goes straight to that PC; without one the password
+  // finds its PC by itself.
+  const hostId = $('idField').hidden ? null : hostIdFrom($('pcid').value);
   $('passBtn').disabled = true; ui.status('Working out the key…');
-  let key;
-  try { key = await passwordKey(password, hostId); } catch { ui.error('This browser could not work out the key. Use a recent Chrome, Edge or Safari over https.'); $('passBtn').disabled = false; return; }
-  mem.lastHost = hostId; persist();
+  let keys;
+  try { keys = await passwordKeys(password); } catch { ui.error('This browser could not work out the key. Use a recent Chrome, Edge or Safari over https.'); $('passBtn').disabled = false; return; }
   $('pass').value = '';
-  start({ hostId, name: 'PC', key, remember: $('remember').checked }, null, false);
+  start({ hostId, rendezvous: keys.rendezvous, name: 'PC', key: keys.auth, remember: $('remember').checked }, null, false);
 });
 
 // ── toast ──
@@ -979,15 +997,15 @@ $('pwForm').addEventListener('submit', async (e) => {
   const host = live() && ui.session.host;
   if (!host) return;
   $('pwSave').disabled = true;
-  const key = await passwordKey($('pw1').value, host.id);
+  const keys = await passwordKeys($('pw1').value);
   if (!live()) return;
-  ui.session.send(concat(Uint8Array.of(C.SETPASS, 32), unhex(key)));
+  ui.session.send(concat(Uint8Array.of(C.SETPASS, 32), keys.master));
   mem.lastHost = host.id;
-  if ($('remember').checked) mem.pcs = mem.pcs.filter((p) => !(p.key && p.hostId === host.id)).concat({ hostId: host.id, name: host.name, key, last: Date.now() });
+  if ($('remember').checked) mem.pcs = mem.pcs.filter((p) => !(p.key && p.hostId === host.id)).concat({ hostId: host.id, name: host.name, key: keys.auth, last: Date.now() });
   persist();
   $('pw1').value = $('pw2').value = '';
   $('pwDialog').close();
-  toast('Password set. Open the PC link anywhere and sign in with it.');
+  toast('Password set. Type it on this page from anywhere to get in.');
 });
 
 // ── driving the PC ───────────────────────────────────────────────────────────────────────────

@@ -3,8 +3,8 @@
 Your PC in a browser: <https://freewatch-brinjal.vercel.app/> (backup: <https://adithya-sd.github.io/freewatch-web/>). The PC can copy a link that carries its pairing code, so opening it pairs at once
 
 - **Pair with a code** once; the browser is remembered after.
-- **Sign in with a permanent password** from any browser: in FreeWatch on the PC, open *Advanced settings*, *Copy web link*, open it and type the password. Set the password in FreeWatch on the PC (Advanced settings), or from a signed-in browser with the key button.
+- **Sign in with just a password: set it in FreeWatch on the PC (Advanced settings), then type it here. It finds your PC and proves it is you; use a long phrase.
 - The picture travels straight between your PC and the browser (WebRTC, encrypted). This page is a static file; nothing runs on a server.
-- The password never leaves the page: a key derived from it (PBKDF2, 200,000 rounds, salted with the PC id) answers a fresh challenge each time. The PC makes you wait after wrong tries.
+- The password never leaves the page. Both ends turn it into a key with PBKDF2 (600,000 rounds); the key answers a fresh challenge each time, and a name made from it is how the PC is found, so the password alone is enough. The PC makes you wait after wrong tries. Use a long phrase: a short word with a number can be guessed offline.
 - Options (link, TURN relay, scaling, scroll, reconnect) are under *Connection options* and the gear.
 - Needs a recent Chrome, Edge or Safari (WebCodecs) and the FreeWatch host on the PC.
