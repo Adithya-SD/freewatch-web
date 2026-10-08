@@ -788,11 +788,21 @@ class Session {
     try { this.decoder && this.decoder.state !== 'closed' && this.decoder.close(); } catch {}
     this.rois.clear();
     this.needKey = true;
+    const config = { codec, codedWidth: encW, codedHeight: encH, optimizeForLatency: true, avc: { format: 'annexb' } };
+    // A browser built without H.264 (some Chromium and Linux builds) connects fine and then can never
+    // show a picture. Say so, instead of leaving "connected but not sending its screen".
+    const cannotPlay = () => {
+      if (this.fatal || this.decoded) return;
+      this.fatal = 'This browser connected, but it cannot play the PC’s H.264 video. Use Chrome, Edge or Safari, or install the codec your browser is missing.'; this.why = 'unsupported';
+      this.close(); this.ui.ended(this.fatal, this);
+    };
+    this.decoded = false;
     this.decoder = new VideoDecoder({
-      output: (frame) => this.ui.picture(frame, this.rois.get(frame.timestamp) || [0, 0, srcW, srcH]),
+      output: (frame) => { this.decoded = true; this.ui.picture(frame, this.rois.get(frame.timestamp) || [0, 0, srcW, srcH]); },
       error: (e) => { console.error(e); this.ui.panel.noPicture(this.ui.name, 'The video stopped. Reconnecting…'); },
     });
-    this.decoder.configure({ codec, codedWidth: encW, codedHeight: encH, optimizeForLatency: true, avc: { format: 'annexb' } });
+    VideoDecoder.isConfigSupported(config).then((r) => { if (!r.supported) cannotPlay(); }, () => {});
+    this.decoder.configure(config);
   }
 
   onFrame(key, roi, data) {
@@ -1147,9 +1157,11 @@ function unreachable(e, target) {
 function refused(session, reason) {
   const why = session.why;
   app.session = null;
-  if (app.opts.sheet) { app.opts.sheet.fail(reason, { kind: why }); return; }
+  // The sheet only answers for a link that has not signed in yet; after that it has closed.
+  if (app.opts.sheet && !session.authed) { app.opts.sheet.fail(reason, { kind: why }); return; }
   if (why === 'forgotten') panel.refused('Pair ' + ui.name + ' again', 'It no longer recognises this browser. It was forgotten on the PC, or paired again from another copy of this page.', 'Pair again', () => { ui.leave(); pairSheet(); });
   else if (why === 'impostor') panel.refused('Not connecting', 'Something answered as ' + ui.name + ' but could not prove it is that PC.');
+  else if (why === 'unsupported') panel.refused('This browser cannot play the picture', reason);
   else panel.refused(ui.name + ' refused the connection', reason);
 }
 
