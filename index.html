@@ -378,7 +378,7 @@ const strict = (t) => [...t.maps.values()].some((s) => s.size > 1);
 /** Why a link that found the PC could not open, said in the one way a person can act on. */
 function explainPath(info) {
   const l = info.local, r = info.remote, lines = [];
-  if (!l.srflx && !l.relay && !l.v6) lines.push('This network gave the browser no public address, so nothing outside can find it.');
+  if (!l.srflx && !l.relay && !l.v6) lines.push('This browser found no public address, so nothing outside can find it. Usual causes: a network that blocks UDP (school, office, some hotspots), a VPN, or a privacy setting that hides WebRTC (Brave Shields, Firefox privacy, WebRTC-blocking extensions).');
   else if (strict(l)) lines.push('This network gives out a different address for every destination, which mobile data usually does, so a direct link cannot open.');
   else if (l.v6 && !l.srflx && !r.v6) lines.push('This network is IPv6 only, and the PC has no IPv6 address, so the two have nothing in common.');
   else if (!r.srflx && !r.v6 && !r.relay) lines.push('The PC offered no public address. It may be offline from the internet.');
@@ -461,13 +461,17 @@ function openLink(target, on) {
           };
           channel.onmessage = (e) => on.bytes(new Uint8Array(e.data));
           channel.onclose = () => { if (!closed && settled) { closed = true; on.close && on.close(); } };
+          // Candidates can appear while the offer is still being made. The PC knows nothing of this
+          // connection until the offer arrives and drops anything sent before it, so they wait here.
+          const early = []; let offered = false;
           pc.onicecandidate = (e) => {
             if (!e.candidate) return;
             note(info.local, e.candidate.candidate);
-            say({
+            const m = {
               type: 'CANDIDATE', dst: target,
               payload: { candidate: { candidate: e.candidate.candidate, sdpMid: e.candidate.sdpMid, sdpMLineIndex: e.candidate.sdpMLineIndex }, type: 'data', connectionId: connection },
-            });
+            };
+            if (offered) say(m); else early.push(m);
           };
           // A network switch leaves the channel "disconnected" for tens of seconds before it is
           // called failed; a path that has not come back in eight seconds is not coming back.
@@ -484,6 +488,8 @@ function openLink(target, on) {
           const offer = await pc.createOffer();
           await pc.setLocalDescription(offer);
           say({ type: 'OFFER', dst: target, payload: { sdp: { type: offer.type, sdp: offer.sdp }, type: 'data', connectionId: connection, label: connection, reliable: true, serialization: 'raw', browser: 'chrome' } });
+          offered = true;
+          early.splice(0).forEach(say);
         } else if (m.type === 'ANSWER' && body.connectionId === connection && pc) {
           info.answered = true;
           // The PC is there. What is left is the path, and thirty seconds is longer than any path takes.
