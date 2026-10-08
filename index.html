@@ -347,13 +347,38 @@ const brokerUrl = () => {
   const u = (cfg().broker || DEFAULTS.broker).trim().replace(/\/+$/, '');
   return /^wss?:\/\//.test(u) ? u : DEFAULTS.broker;
 };
+/** The relay addresses typed or pasted, however they were separated. */
+const turnUrls = (text) => String(text || '').split(/[\s,]+/).filter((u) => /^turns?:/i.test(u));
 const iceServers = () => {
   const servers = [];
   const stun = cfg().stun.filter((x) => x.trim());
   if (stun.length) servers.push({ urls: stun });
-  if (cfg().turn.trim()) servers.push({ urls: cfg().turn.trim(), username: cfg().turnUser, credential: cfg().turnPass });
+  const turn = turnUrls(cfg().turn);
+  if (turn.length) servers.push({ urls: turn, username: cfg().turnUser, credential: cfg().turnPass });
   return servers;
 };
+/**
+ * What a relay provider's dashboard hands out, in whichever form: the `iceServers` JSON their
+ * quick-start shows, or plain `turn:` lines. Returns `{ turn, user, pass }` or null.
+ */
+function parseRelay(text) {
+  const t = String(text || '').trim();
+  if (!t) return null;
+  let list = null;
+  if (/^[\[{]/.test(t)) {
+    try { const j = JSON.parse(t); list = Array.isArray(j) ? j : Array.isArray(j.iceServers) ? j.iceServers : [j]; } catch { return null; }
+    const urls = [], first = {};
+    for (const e of list) {
+      const u = [].concat(e.urls || e.url || []).filter((x) => /^turns?:/i.test(x));
+      if (!u.length) continue;
+      urls.push(...u);
+      if (!first.user && e.username) { first.user = e.username; first.pass = e.credential || ''; }
+    }
+    return urls.length ? { turn: urls.join('\n'), user: first.user || '', pass: first.pass || '' } : null;
+  }
+  const urls = turnUrls(t);
+  return urls.length ? { turn: urls.join('\n'), user: '', pass: '' } : null;
+}
 
 // ── what a network offers, counted from candidate lines ──────────────────────────────────────
 /** Tally the candidates one end offers: how many of each kind, whether any are IPv6, and how its router maps it. */
@@ -384,7 +409,7 @@ function explainPath(info) {
   else if (l.v6 && !l.srflx4 && !l.relay && !r.v6) lines.push('This network is IPv6 only (mobile data often is), and the PC has no IPv6 address, so the two have nothing in common. Connect the PC to a Wi-Fi or hotspot that gives it an IPv6 address, or set up a relay.');
   else if (!r.srflx && !r.v6 && !r.relay) lines.push('The PC offered no public address. It may be offline from the internet.');
   else lines.push('The two could not find a direct path.');
-  lines.push(cfg().turn.trim() ? 'The relay you set up did not carry it either; check its address and password.' : 'Put this device on the same Wi-Fi as the PC, or set up a relay in Settings.');
+  lines.push(turnUrls(cfg().turn).length ? 'The relay you set up did not carry it either; check its address and password.' : 'Put this device on the same Wi-Fi as the PC, or set up a relay in Settings.');
   return lines.join(' ');
 }
 
@@ -1272,7 +1297,7 @@ async function doctor() {
   row('Public address (IPv4)', t.srflx ? 'Found' : 'None', t.srflx ? 'ok' : 'warn');
   row('IPv6', t.v6 ? 'Yes' : 'No', t.v6 ? 'ok' : '');
   row('Router', !t.srflx ? 'Unknown' : strict(t) ? 'Strict (changes per destination)' : 'Friendly', !t.srflx ? '' : strict(t) ? 'bad' : 'ok');
-  row('Relay', cfg().turn.trim() ? (t.relay ? 'Working' : 'Not answering') : 'Not set up', cfg().turn.trim() ? (t.relay ? 'ok' : 'bad') : '');
+  row('Relay', turnUrls(cfg().turn).length ? (t.relay ? 'Working' : 'Not answering') : 'Not set up', turnUrls(cfg().turn).length ? (t.relay ? 'ok' : 'bad') : '');
   verdict.textContent = !broker ? 'This browser cannot reach the connection service, so nothing can connect. Check the internet, or the address in Settings.'
     : t.relay ? 'Good. If a direct path is blocked the relay will carry it.'
     : strict(t) ? 'Your router is the strict kind (mobile data usually is). Connecting from here to a PC across the internet will often fail without a relay. Same Wi-Fi works; so does a relay set in Settings.'
@@ -1328,8 +1353,8 @@ function buildSettings() {
     (() => { const r = el('input', { type: 'range', min: '0.25', max: '4', step: '0.25', 'aria-label': 'Scroll speed' }); r.value = c.scroll; r.oninput = () => { c.scroll = Number(r.value) || 1; persist(); }; return r; })());
   group('Away from home',
     el('button', { class: 'card', type: 'button', onclick: () => networkSheet() },
-      el('div', { class: 't wrap' }, el('b', { text: 'Internet relay' }), el('span', { text: c.turn.trim() ? c.turn.trim() + ' · used when a PC cannot be reached directly' : 'Not set. PCs are reachable when a direct path opens between the two networks.' })),
-      el('span', { class: 'badge ' + (c.turn.trim() ? 'ok' : ''), text: c.turn.trim() ? 'Change' : 'Set up' })),
+      el('div', { class: 't wrap' }, el('b', { text: 'Internet relay' }), el('span', { text: turnUrls(c.turn).length ? turnUrls(c.turn)[0] + ' · used when a PC cannot be reached directly' : 'Not set. PCs are reachable when a direct path opens between the two networks.' })),
+      el('span', { class: 'badge ' + (turnUrls(c.turn).length ? 'ok' : ''), text: turnUrls(c.turn).length ? 'Change' : 'Set up' })),
     toggleCard('Reconnect on its own', 'Keep trying when the link drops', () => c.reconnect, (v) => (c.reconnect = v)),
     el('button', { class: 'card', type: 'button', onclick: () => doctor() }, el('div', { class: 't wrap' }, el('b', { text: 'Check my connection' }), el('span', { text: 'See what this network allows' })), el('span', { class: 'badge', text: 'Run' })));
   group('Appearance',
@@ -1348,16 +1373,23 @@ function networkSheet() {
   const c = cfg();
   const s = sheet('Internet relay', 'A relay carries the picture when two networks cannot reach each other directly, which mobile data often cannot. Free ones: metered.ca, Cloudflare Realtime TURN, ExpressTURN. Paste the address, user name and password it gives you. Leave it empty to rely on direct paths.');
   const mk = (label, value, o = {}) => { const f = el('input', { class: 'in', type: o.type || 'text', placeholder: o.placeholder || '', autocomplete: 'off', spellcheck: 'false', 'aria-label': label }); f.value = value; s.add(el('label', { class: 'field' }, el('span', { text: label }), f)); return f; };
-  const turn = mk('Relay address (TURN)', c.turn, { placeholder: 'turn:example.com:3478' });
+  const turn = el('textarea', { class: 'in', spellcheck: 'false', placeholder: 'turn:example.com:3478\nturns:example.com:443?transport=tcp\n(or paste what your provider shows)', 'aria-label': 'Relay addresses (TURN)' });
+  turn.value = turnUrls(c.turn).join('\n');
+  s.add(el('label', { class: 'field' }, el('span', { text: 'Relay addresses (TURN), one per line' }), turn));
   const user = mk('User name', c.turnUser);
   const pass = mk('Password', c.turnPass, { type: 'password' });
+  // Paste the JSON a provider's dashboard shows, and the three fields fill themselves.
+  turn.addEventListener('input', () => {
+    const r = parseRelay(turn.value);
+    if (r && /^\s*[\[{]/.test(turn.value)) { turn.value = r.turn; if (r.user) user.value = r.user; if (r.pass) pass.value = r.pass; }
+  });
   const stun = el('textarea', { class: 'in', spellcheck: 'false', 'aria-label': 'STUN servers' }); stun.value = c.stun.join('\n');
   s.add(el('label', { class: 'field' }, el('span', { text: 'STUN servers, one per line' }), stun));
   const broker = mk('Connection service (PeerJS broker)', c.broker, { type: 'url', placeholder: DEFAULTS.broker });
   s.add(el('div', { class: 'field' }, el('span', { text: 'Path' }), segmented('Path', [['all', 'Best available'], ['relay', 'Always via relay']], c.policy, (v) => { c.policy = v; })));
   s.button('Save', { click: () => {
     const b = broker.value.trim();
-    Object.assign(c, { turn: turn.value.trim(), turnUser: user.value, turnPass: pass.value, stun: stun.value.split('\n').map((x) => x.trim()).filter(Boolean), broker: /^wss?:\/\//.test(b) ? b : DEFAULTS.broker });
+    Object.assign(c, { turn: turnUrls(turn.value).join('\n'), turnUser: user.value, turnPass: pass.value, stun: stun.value.split('\n').map((x) => x.trim()).filter(Boolean), broker: /^wss?:\/\//.test(b) ? b : DEFAULTS.broker });
     persist(); buildSettings(); toast('Saved. Link changes apply to the next connection.');
   } });
   s.button('Cancel', { ghost: true });
@@ -1735,14 +1767,14 @@ setInterval(() => {
   const params = new URLSearchParams(location.hash.replace(/^#/, ''));
   const linked = hostIdFrom(params.get('pc') || '');
   const linkedCode = (params.get('code') || '').trim();
-  const turn = (params.get('turn') || '').trim();
-  if (/^turns?:/.test(turn)) {
+  const turn = turnUrls((params.get('turn') || '').trim()).join('\n');
+  if (turn) {
     Object.assign(cfg(), { turn, turnUser: params.get('tu') || '', turnPass: params.get('tp') || '' });
     persist();
   }
   if (linked) { mem.lastHost = linked; persist(); }
   if (linked || linkedCode || turn) history.replaceState(null, '', location.pathname + location.search);
-  if (/^turns?:/.test(turn)) toast('Relay added from the link.');
+  if (turn) toast('Relay added from the link.');
   if (linkedCode && looksLikeCode(linkedCode)) {
     const { submit } = pairSheet(linkedCode);
     submit();
@@ -1755,7 +1787,7 @@ setInterval(() => {
 })();
 
 // For testing from the console: window.freewatch.
-window.freewatch = { ui, app, mem, connect, panel, tally, note, strict, explainPath, Mirror, Session, Out, graphemes, passwordKeys, EFFORT_LIMITS, normaliseCode, looksLikeCode, hostIdFrom, nalUnits, nalOfType };
+window.freewatch = { ui, app, mem, connect, panel, tally, note, strict, explainPath, Mirror, Session, Out, parseRelay, turnUrls, graphemes, passwordKeys, EFFORT_LIMITS, normaliseCode, looksLikeCode, hostIdFrom, nalUnits, nalOfType };
 </script>
 </body>
 </html>
