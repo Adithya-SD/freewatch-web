@@ -127,7 +127,7 @@
   /* ── viewer ── */
   #stage { position: fixed; inset: 0; background: #000; touch-action: none; user-select: none; -webkit-user-select: none; color: #f4f4f5; --text: #f4f4f5; --dim: #9b9ba6; --surface: #121215; --raised: #1b1b20; --line: #27272e; --accent: #ff4d97; --on-accent: #1a0710; --faint: #6c6c77; }
   #view { position: absolute; inset: 0; width: 100%; height: 100%; display: block; outline: none; cursor: none; touch-action: none; }
-  .chips { position: absolute; top: calc(env(safe-area-inset-top, 0px) + 10px); right: calc(env(safe-area-inset-right, 0px) + 10px); display: grid; gap: 8px; transition: opacity .25s, transform .25s; }
+  .chips { position: absolute; top: calc(env(safe-area-inset-top, 0px) + 10px); right: calc(env(safe-area-inset-right, 0px) + 10px); display: flex; flex-direction: column; flex-wrap: wrap-reverse; align-content: flex-start; gap: 8px; max-height: calc(100% - env(safe-area-inset-top, 0px) - 20px); transition: opacity .25s, transform .25s; }
   .chips.left { right: auto; left: calc(env(safe-area-inset-left, 0px) + 10px); }
   .hide { opacity: 0; pointer-events: none; transform: translateX(8px); }
   .chips.left.hide { transform: translateX(-8px); }
@@ -160,6 +160,41 @@
   #composeRow { display: flex; gap: 8px; align-items: flex-end; }
   #ctext { flex: 1; min-height: 46px; max-height: 120px; resize: none; border-radius: 14px; border: 1px solid var(--line); background: #1b1b20; padding: 12px 14px; font-size: 16px; line-height: 1.3; }
   #csend { height: 46px; padding: 0 20px; border: 0; border-radius: 14px; background: var(--accent); color: var(--on-accent); font-weight: 700; }
+  /* ── the on-screen controller ── */
+  #pad { position: absolute; inset: 0; touch-action: none; user-select: none; -webkit-user-select: none; }
+  #pad > * { position: absolute; touch-action: none; }
+  #pad .btn2 { display: grid; place-items: center; border: 0; border-radius: 50%; background: rgba(27,27,32,.62); color: #f4f4f5; font-weight: 800; font-size: 17px; backdrop-filter: blur(6px); box-shadow: inset 0 0 0 1.5px rgba(255,255,255,.14); }
+  #pad .btn2.down { background: rgba(255,77,151,.55); box-shadow: inset 0 0 0 1.5px rgba(255,255,255,.5); }
+  #pad .face { width: var(--b); height: var(--b); }
+  #pad .shoulder { width: calc(var(--b) * 1.5); height: calc(var(--b) * .8); border-radius: 14px; font-size: 14px; }
+  #pad .small { width: calc(var(--b) * .95); height: calc(var(--b) * .5); border-radius: 12px; font-size: 12px; }
+  #pad .stick { width: calc(var(--b) * 2.5); height: calc(var(--b) * 2.5); border-radius: 50%; background: rgba(27,27,32,.5); box-shadow: inset 0 0 0 2px rgba(255,255,255,.16); }
+  #pad .stick i { position: absolute; left: 50%; top: 50%; width: 46%; height: 46%; margin: -23% 0 0 -23%; border-radius: 50%; background: rgba(244,244,245,.38); box-shadow: inset 0 0 0 2px rgba(255,255,255,.3); pointer-events: none; }
+  #pad { --b: clamp(46px, 11vmin, 76px); }
+  #pad { --sl: env(safe-area-inset-left, 0px); --sb: env(safe-area-inset-bottom, 0px); --rs: calc(env(safe-area-inset-right, 0px) + 66px); --top: calc(env(safe-area-inset-top, 0px) + 116px); }
+  #padLB { left: calc(var(--sl) + 16px); top: var(--top); }
+  #padLT { left: calc(var(--sl) + 16px); top: calc(var(--top) + var(--b) * .95); }
+  #padRB { right: var(--rs); top: var(--top); }
+  #padRT { right: var(--rs); top: calc(var(--top) + var(--b) * .95); }
+  #padLS { left: calc(var(--sl) + 3vmin); bottom: calc(var(--sb) + 4vmin); }
+  #padD { left: calc(var(--sl) + 3vmin + var(--b) * 2.5 + 10px); bottom: calc(var(--sb) + 4vmin + var(--b) * .15); width: calc(var(--b) * 2.2); height: calc(var(--b) * 2.2); }
+  #padD .btn2 { position: absolute; width: calc(var(--b) * .8); height: calc(var(--b) * .8); border-radius: 12px; }
+  #padD .u { left: 50%; top: 0; margin-left: calc(var(--b) * -.4); } #padD .d { left: 50%; bottom: 0; margin-left: calc(var(--b) * -.4); }
+  #padD .l { left: 0; top: 50%; margin-top: calc(var(--b) * -.4); } #padD .r { right: 0; top: 50%; margin-top: calc(var(--b) * -.4); }
+  #padF { right: calc(var(--rs) + 3vmin); bottom: calc(var(--sb) + 4vmin); width: calc(var(--b) * 2.6); height: calc(var(--b) * 2.6); }
+  #padRS { right: calc(var(--rs) + 3vmin + var(--b) * 2.6 + 10px); bottom: calc(var(--sb) + 4vmin); }
+  #padF .btn2 { position: absolute; }
+  #padF .y { left: 50%; top: 0; margin-left: calc(var(--b) * -.5); } #padF .a { left: 50%; bottom: 0; margin-left: calc(var(--b) * -.5); }
+  #padF .x { left: 0; top: 50%; margin-top: calc(var(--b) * -.5); } #padF .b { right: 0; top: 50%; margin-top: calc(var(--b) * -.5); }
+  #padC { left: 50%; bottom: calc(var(--sb) + 3vmin); transform: translateX(-50%); display: flex; gap: 8px; }
+  /* Held upright there is not room for two clusters a side: the stick stays low and the pad or buttons sit above it. */
+  @media (orientation: portrait) {
+    #padD { left: calc(var(--sl) + 3vmin); bottom: calc(var(--sb) + 4vmin + var(--b) * 2.5 + 14px); }
+    #padRS { right: calc(var(--rs) + 3vmin); bottom: calc(var(--sb) + 4vmin); }
+    #padF { bottom: calc(var(--sb) + 4vmin + var(--b) * 2.5 + 14px); }
+    #padC { bottom: calc(var(--sb) + 30vmin); }
+  }
+  #padC .small { position: static; }
   @media (pointer: coarse) { .fine-only { display: none !important; } }
   @media (pointer: fine) { .coarse-only { display: none !important; } }
 </style>
@@ -199,6 +234,7 @@
 <!-- ═══ viewer ═══ -->
 <div id="stage" hidden>
   <canvas id="view" tabindex="0" aria-label="Remote screen"></canvas>
+  <div id="pad" hidden></div>
   <div id="hud" hidden></div>
   <div class="chips left" id="backChips"><button class="chip" id="leave" aria-label="Back to computers" title="Back"><svg class="i" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button></div>
   <div id="leftcol">
@@ -208,6 +244,8 @@
   <div class="chips" id="chips">
     <button class="chip" id="chipKb" aria-label="Keyboard" title="Keyboard"><svg class="i" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2.5"/><path d="M7 10h.01M11 10h.01M15 10h.01M7 14h10"/></svg></button>
     <button class="chip coarse-only" id="chipRotate" aria-label="Rotate" title="Landscape" hidden><svg class="i" viewBox="0 0 24 24"><path d="M4 11a8 8 0 0114-4l2 2M20 4v5h-5M20 13a8 8 0 01-14 4l-2-2M4 20v-5h5"/></svg></button>
+    <button class="chip" id="chipPad" aria-label="Game controller" title="Game controller" aria-pressed="false" hidden><svg class="i" viewBox="0 0 24 24"><path d="M7 8h10a4 4 0 014 4v1.5a3 3 0 01-5.2 2L14 14h-4l-1.8 1.5A3 3 0 013 13.5V12a4 4 0 014-4z"/><path d="M8 10.5v3M6.5 12h3M16 11.5h.01M18 12.5h.01"/></svg></button>
+    <button class="chip fine-only" id="chipGame" aria-label="Game mode" title="Game mode: full screen, mouse look, and keys as keys" aria-pressed="false" hidden><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="6.5"/><path d="M12 3v4M12 17v4M3 12h4M17 12h4"/></svg></button>
     <button class="chip" id="chipAudio" aria-label="PC sound" title="PC sound" aria-pressed="false"><svg class="i" viewBox="0 0 24 24"><path d="M4 10v4h4l5 4V6l-5 4H4z"/><path d="M16.5 8.5a5 5 0 010 7M19 6a8.5 8.5 0 010 12"/></svg></button>
     <button class="chip" id="chipDark" aria-label="Turn the PC screen down" title="PC screen" aria-pressed="false"><svg class="i" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg></button>
     <button class="chip fine-only" id="zoomIn" aria-label="Zoom in" title="Zoom in (Ctrl + scroll)"><svg class="i" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l5 5M8.5 11h5M11 8.5v5"/></svg></button>
@@ -266,11 +304,11 @@ const DEFAULTS = {
 const EFFORTS = ['Battery saver', 'Balanced', 'Smooth', 'Full'];
 const EFFORT_LIMITS = [[15, 1500, 10, 800], [30, 4000, 20, 2000], [45, 8000, 30, 4000], null];
 const PBKDF2_ROUNDS = 600000;
-const C = { HELLO: 1, ROI: 2, INPUT: 3, PING: 4, IDENT: 5, TEXT: 6, AUDIO: 7, DISPLAY: 8, AUTH: 9, PAIR: 10, FIELD: 11, PASSWORD: 12, SETPASS: 13, LIMITS: 14, ROLE: 15 };
+const C = { HELLO: 1, ROI: 2, INPUT: 3, PING: 4, IDENT: 5, TEXT: 6, AUDIO: 7, DISPLAY: 8, AUTH: 9, PAIR: 10, FIELD: 11, PASSWORD: 12, SETPASS: 13, LIMITS: 14, ROLE: 15, PAD: 17 };
 const S = { CONFIG: 0x81, FRAME: 0x82, IDENT: 0x83, PONG: 0x84, FOCUS: 0x85, CURSOR: 0x86, AUDIO: 0x87,
             CHALLENGE: 0x88, AUTH: 0x89, FIELD: 0x8a };
-const CAP = { FIELD: 1, LIMITS: 2, ROLE: 4 };
-const IN = { MOVE: 1, BUTTON: 3, SCROLL: 4, KEY: 5 };
+const CAP = { FIELD: 1, LIMITS: 2, ROLE: 4, PAD: 16 };
+const IN = { MOVE: 1, REL: 2, BUTTON: 3, SCROLL: 4, KEY: 5 };
 const AUTH = { OK: 0, PAIRED: 1, DENIED: 2, BAD_CODE: 3, LOCKED: 4 };
 const enc = new TextEncoder();
 const dec = new TextDecoder();
@@ -336,6 +374,7 @@ const VK = {
   Semicolon: 0xba, Equal: 0xbb, Comma: 0xbc, Minus: 0xbd, Period: 0xbe, Slash: 0xbf, Backquote: 0xc0,
   BracketLeft: 0xdb, Backslash: 0xdc, BracketRight: 0xdd, Quote: 0xde,
 };
+for (let i = 1; i <= 12; i++) VK['F' + i] = 0x6f + i;
 for (let i = 0; i < 26; i++) VK['Key' + String.fromCharCode(65 + i)] = 0x41 + i;
 for (let i = 0; i < 10; i++) { VK['Digit' + i] = 0x30 + i; VK['Numpad' + i] = 0x60 + i; }
 for (let i = 1; i <= 12; i++) VK['F' + i] = 0x6f + i;
@@ -970,6 +1009,7 @@ const ui = {
     if (session !== app.session) return;
     app.retries = 0;
     remoteEditable = null;
+    padReset();
     app.target = { pc };
     this.name = pc ? pc.name : this.name;
     if (app.sheet) { const s = app.sheet; app.sheet = null; s.onClose = null; s.close(); }
@@ -1127,6 +1167,7 @@ const ui = {
 
   leave() {
     const s = app.session;
+    padLeave(); setGame(false);
     app.session = null;
     clearTimeout(app.retryTimer); clearInterval(app.tick); clearTimeout(this.noPicture);
     if (s) s.close();
@@ -1546,6 +1587,14 @@ function sendMove(at) {
   });
 }
 
+// Game mode: the pointer is captured and its movement sent as movement; keys are sent as keys.
+let game = false, lookX = 0, lookY = 0, lookQueued = false;
+function sendLook() {
+  lookQueued = false;
+  const dx = Math.round(lookX), dy = Math.round(lookY);
+  lookX -= dx; lookY -= dy;
+  if (dx || dy) input(IN.REL, dx, dy);
+}
 const touches = new Map();
 let gesture = null, longPress = 0, lastTap = null;
 
@@ -1554,6 +1603,8 @@ canvas.addEventListener('pointerdown', (e) => {
   canvas.focus({ preventScroll: true });
   canvas.setPointerCapture(e.pointerId);
   if (e.pointerType === 'mouse') {
+    // Mouse look moves the pointer by amounts, not to places, so a click in game mode is only a click.
+    if (game) { input(IN.BUTTON, buttonOf(e), 1); return; }
     const at = ui.toSource(e.offsetX, e.offsetY); if (!at) return;
     input(IN.MOVE, at[0], at[1]); input(IN.BUTTON, buttonOf(e), 1);
     return;
@@ -1573,7 +1624,10 @@ canvas.addEventListener('pointerdown', (e) => {
   }, 550);
 });
 canvas.addEventListener('pointermove', (e) => {
-  if (e.pointerType === 'mouse') { const at = ui.toSource(e.offsetX, e.offsetY); if (at) sendMove(at); return; }
+  if (e.pointerType === 'mouse') {
+    if (game) { lookX += e.movementX; lookY += e.movementY; if (!lookQueued) { lookQueued = true; requestAnimationFrame(sendLook); } return; }
+    const at = ui.toSource(e.offsetX, e.offsetY); if (at) sendMove(at); return;
+  }
   const p = touches.get(e.pointerId); if (!p || !gesture) return;
   const dx = e.clientX - p.x, dy = e.clientY - p.y;
   p.x = e.clientX; p.y = e.clientY;
@@ -1591,7 +1645,11 @@ canvas.addEventListener('pointermove', (e) => {
   }
 });
 const lift = (e) => {
-  if (e.pointerType === 'mouse') { const at = ui.toSource(e.offsetX, e.offsetY); if (at) { input(IN.MOVE, at[0], at[1]); input(IN.BUTTON, buttonOf(e), 0); } return; }
+  if (e.pointerType === 'mouse') {
+    if (game) { input(IN.BUTTON, buttonOf(e), 0); return; }
+    const at = ui.toSource(e.offsetX, e.offsetY); if (at) { input(IN.MOVE, at[0], at[1]); input(IN.BUTTON, buttonOf(e), 0); }
+    return;
+  }
   const p = touches.get(e.pointerId); touches.delete(e.pointerId); clearTimeout(longPress);
   if (gesture && gesture.drag) { input(IN.BUTTON, 0, 0); gesture = touches.size ? gesture : null; lastTap = null; return; }
   if (p && gesture && !gesture.moved && !gesture.done && gesture.count === 1 && performance.now() - p.t < 400) {
@@ -1613,10 +1671,10 @@ const pinchDistance = () => { const p = [...touches.values()]; return p.length <
 canvas.addEventListener('wheel', (e) => {
   e.preventDefault();
   if (e.ctrlKey) { ui.zoom(Math.exp(-e.deltaY * 0.0025), e.offsetX, e.offsetY); return; }
-  const at = ui.toSource(e.offsetX, e.offsetY); if (!at) return;
+  const at = game ? [0, 0] : ui.toSource(e.offsetX, e.offsetY); if (!at) return;
   // Pixels to wheel notches (a notch is 120 on the wire, about 100 browser pixels).
   const k = e.deltaMode === 1 ? 40 : e.deltaMode === 2 ? 400 : 1;
-  input(IN.MOVE, at[0], at[1]);
+  if (!game) input(IN.MOVE, at[0], at[1]);
   const sign = cfg().natural ? -1 : 1, speed = 1.2 * cfg().scroll * sign;
   input(IN.SCROLL, Math.round(e.deltaX * k * speed), Math.round(-e.deltaY * k * speed));
 }, { passive: false });
@@ -1624,6 +1682,8 @@ canvas.addEventListener('wheel', (e) => {
 function keyEvent(e, down) {
   if (!live() || !app.stage || e.target.closest('dialog, #compose')) return;
   const vk = VK[e.code];
+  // A game wants keys held and released, not characters typed.
+  if (game && vk !== undefined) { e.preventDefault(); if (!(down && e.repeat)) input(IN.KEY, vk, down ? 1 : 0); return; }
   const printable = e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey;
   // A latched modifier turns the next character into a shortcut, as on the phone.
   if (printable && latched.size) {
@@ -1866,6 +1926,148 @@ $('zoomOut').onclick = () => ui.zoom(1 / 1.5);
 $('leave').onclick = () => ui.leave();
 for (const ev of ['fullscreenchange', 'webkitfullscreenchange']) document.addEventListener(ev, () => { $('chipFull').classList.toggle('on', !!fullElement()); ui.resize(); });
 
+// ── controllers: a gamepad in this browser, or one drawn on the screen, becomes a controller on the PC ─
+/** XInput's button flags, which is what the PC's virtual controller speaks. */
+const XB = { UP: 1, DOWN: 2, LEFT: 4, RIGHT: 8, START: 16, BACK: 32, L3: 64, R3: 128, LB: 256, RB: 512, GUIDE: 1024, A: 4096, B: 8192, X: 16384, Y: 32768 };
+/** The browser's "standard" gamepad layout, button by button, as XInput flags (the triggers are analog, below). */
+const STANDARD = [XB.A, XB.B, XB.X, XB.Y, XB.LB, XB.RB, 0, 0, XB.BACK, XB.START, XB.L3, XB.R3, XB.UP, XB.DOWN, XB.LEFT, XB.RIGHT, XB.GUIDE];
+const axis = (v) => { const d = Math.abs(v) < 0.08 ? 0 : Math.max(-1, Math.min(1, v)); return Math.round(d * 32767); };
+/** A browser gamepad as an XInput report. Up is positive on a stick in XInput and negative in the browser. */
+function padFromGamepad(gp) {
+  let buttons = 0;
+  gp.buttons.forEach((b, i) => { if (STANDARD[i] && (b.pressed || b.value > 0.5)) buttons |= STANDARD[i]; });
+  const trigger = (i) => Math.round(Math.max(0, Math.min(1, gp.buttons[i] ? gp.buttons[i].value : 0)) * 255);
+  const a = gp.axes;
+  return { buttons, lt: trigger(6), rt: trigger(7), thumbs: [axis(a[0] || 0), -axis(a[1] || 0) || 0, axis(a[2] || 0), -axis(a[3] || 0) || 0] };
+}
+const samePad = (a, b) => a.buttons === b.buttons && a.lt === b.lt && a.rt === b.rt && a.thumbs.every((v, i) => v === b.thumbs[i]);
+
+const padLast = new Map();
+const padOk = () => { const s = app.session; return !!s && s.alive && s.authed && !!(s.caps & CAP.PAD); };
+/** Send one controller's state if it changed, or if it has been half a second (so the PC never holds a stale button). */
+function sendPad(slot, rep) {
+  if (!padOk()) return;
+  const was = padLast.get(slot), now = performance.now();
+  if (was && samePad(was.rep, rep) && now - was.at < 500) return;
+  padLast.set(slot, { rep: { ...rep, thumbs: [...rep.thumbs] }, at: now });
+  const out = new Out().u8(C.PAD).u8(slot).u16(rep.buttons).u8(rep.lt).u8(rep.rt);
+  for (const t of rep.thumbs) out.u16(t & 0xffff);
+  app.session.send(out.done());
+}
+function unplugPad(slot) {
+  padLast.delete(slot);
+  if (padOk()) app.session.send(new Out().u8(C.PAD).u8(0x80 | slot).u16(0).u8(0).u8(0).u16(0).u16(0).u16(0).u16(0).done());
+}
+
+// Which of the PC's four controller slots each physical pad, and the on-screen one, is using.
+const physical = new Map();
+let screenSlot = null;
+const freeSlot = () => { const used = new Set([...physical.values(), screenSlot]); for (let i = 0; i < 4; i++) if (!used.has(i)) return i; return -1; };
+function pollPads() {
+  requestAnimationFrame(pollPads);
+  if (!navigator.getGamepads || !padOk()) return;
+  const seen = new Set();
+  for (const gp of navigator.getGamepads()) {
+    if (!gp || !gp.connected) continue;
+    seen.add(gp.index);
+    let slot = physical.get(gp.index);
+    if (slot === undefined) { slot = freeSlot(); if (slot < 0) continue; physical.set(gp.index, slot); toast('Controller ' + (slot + 1) + ' connected: ' + (gp.id || 'gamepad').slice(0, 40)); }
+    sendPad(slot, padFromGamepad(gp));
+  }
+  for (const [index, slot] of physical) if (!seen.has(index)) { physical.delete(index); unplugPad(slot); }
+}
+requestAnimationFrame(pollPads);
+/** A new session starts with no controllers on the PC's side. */
+function padReset() { padLast.clear(); $('chipPad').hidden = !(app.session && (app.session.caps & CAP.PAD)); }
+
+const screenPad = { buttons: 0, lt: 0, rt: 0, thumbs: [0, 0, 0, 0] };
+const pushScreen = () => { if (screenSlot !== null) sendPad(screenSlot, screenPad); };
+function holdable(node, press, release) {
+  node.addEventListener('pointerdown', (e) => { e.preventDefault(); try { node.setPointerCapture(e.pointerId); } catch {} node.classList.add('down'); press(); buzz(6); pushScreen(); });
+  const up = () => { if (!node.classList.contains('down')) return; node.classList.remove('down'); release(); pushScreen(); };
+  node.addEventListener('pointerup', up); node.addEventListener('pointercancel', up);
+  return node;
+}
+const padButton = (cls, label, bit, extra = {}) => holdable(el('button', { class: 'btn2 ' + cls, type: 'button', text: label, 'aria-label': extra.name || label, ...(extra.id ? { id: extra.id } : {}) }),
+  () => { screenPad.buttons |= bit; }, () => { screenPad.buttons &= ~bit; });
+const padTrigger = (id, label, key) => holdable(el('button', { class: 'btn2 shoulder', id, type: 'button', text: label, 'aria-label': label }),
+  () => { screenPad[key] = 255; }, () => { screenPad[key] = 0; });
+function padStick(id, i) {
+  const base = el('div', { class: 'stick', id }), knob = el('i');
+  base.append(knob);
+  let active = null;
+  const move = (e) => {
+    const r = base.getBoundingClientRect(), R = r.width / 2;
+    let dx = e.clientX - (r.left + R), dy = e.clientY - (r.top + R);
+    const d = Math.hypot(dx, dy);
+    if (d > R) { dx *= R / d; dy *= R / d; }
+    knob.style.transform = `translate(${dx}px, ${dy}px)`;
+    screenPad.thumbs[i * 2] = Math.round((dx / R) * 32767);
+    screenPad.thumbs[i * 2 + 1] = Math.round((-dy / R) * 32767) || 0;
+    pushScreen();
+  };
+  base.addEventListener('pointerdown', (e) => { e.preventDefault(); active = e.pointerId; try { base.setPointerCapture(active); } catch {} move(e); });
+  base.addEventListener('pointermove', (e) => { if (e.pointerId === active) move(e); });
+  const end = (e) => { if (e.pointerId !== active) return; active = null; knob.style.transform = ''; screenPad.thumbs[i * 2] = 0; screenPad.thumbs[i * 2 + 1] = 0; pushScreen(); };
+  base.addEventListener('pointerup', end); base.addEventListener('pointercancel', end);
+  return base;
+}
+function buildPad() {
+  const pad = $('pad');
+  if (pad.childElementCount) return;
+  pad.append(
+    padButton('shoulder', 'LB', XB.LB, { id: 'padLB' }), padTrigger('padLT', 'LT', 'lt'),
+    padButton('shoulder', 'RB', XB.RB, { id: 'padRB' }), padTrigger('padRT', 'RT', 'rt'),
+    padStick('padLS', 0), padStick('padRS', 1),
+    el('div', { id: 'padD' }, padButton('u', '▲', XB.UP, { name: 'Up' }), padButton('d', '▼', XB.DOWN, { name: 'Down' }), padButton('l', '◀', XB.LEFT, { name: 'Left' }), padButton('r', '▶', XB.RIGHT, { name: 'Right' })),
+    el('div', { id: 'padF' }, padButton('face y', 'Y', XB.Y), padButton('face a', 'A', XB.A), padButton('face x', 'X', XB.X), padButton('face b', 'B', XB.B)),
+    el('div', { id: 'padC' }, padButton('small', 'Back', XB.BACK), padButton('small', 'L3', XB.L3), padButton('small', 'R3', XB.R3), padButton('small', 'Start', XB.START)));
+}
+function setScreenPad(on) {
+  if (on && screenSlot === null) {
+    if (!padOk()) { toast('This PC cannot take a controller. Install the ViGEmBus driver on it, once.'); return; }
+    const slot = freeSlot();
+    if (slot < 0) { toast('The PC already has four controllers.'); return; }
+    screenSlot = slot; buildPad();
+    // Whatever was under the screen stays out of the game: touches here are the controller's alone.
+    $('pad').hidden = false; pushScreen();
+  } else if (!on && screenSlot !== null) {
+    const slot = screenSlot; screenSlot = null;
+    Object.assign(screenPad, { buttons: 0, lt: 0, rt: 0, thumbs: [0, 0, 0, 0] });
+    for (const k of $('pad').querySelectorAll('.down')) k.classList.remove('down');
+    for (const k of $('pad').querySelectorAll('.stick i')) k.style.transform = '';
+    unplugPad(slot); $('pad').hidden = true;
+  }
+  $('chipPad').classList.toggle('on', screenSlot !== null); $('chipPad').setAttribute('aria-pressed', String(screenSlot !== null));
+}
+$('chipPad').onclick = () => setScreenPad(screenSlot === null);
+// Left on screen after leaving, the controller would still be there for the next PC; it is not carried over.
+function padLeave() { setScreenPad(false); physical.clear(); padLast.clear(); }
+
+// Game mode: full screen, the mouse captured so moving it looks around, and keys sent as held keys.
+$('chipGame').hidden = !($('view').requestPointerLock);
+async function setGame(on) {
+  if (on === game) return;
+  game = on;
+  $('chipGame').classList.toggle('on', on); $('chipGame').setAttribute('aria-pressed', String(on));
+  if (on) {
+    try { if (!fullElement()) await toggleFull(); } catch {}
+    try {
+      const lock = canvas.requestPointerLock({ unadjustedMovement: true });
+      if (lock && lock.catch) await lock.catch(() => canvas.requestPointerLock());
+    } catch {}
+    try { if (navigator.keyboard && navigator.keyboard.lock) await navigator.keyboard.lock(); } catch {}
+    toast('Game mode on. Esc lets go of the mouse.');
+  } else {
+    lookX = lookY = 0;
+    try { if (document.pointerLockElement) document.exitPointerLock(); } catch {}
+    try { navigator.keyboard && navigator.keyboard.unlock && navigator.keyboard.unlock(); } catch {}
+    for (const code of MODIFIER_CODES) input(IN.KEY, VK[code], 0);
+  }
+}
+$('chipGame').onclick = () => setGame(!game);
+document.addEventListener('pointerlockchange', () => { if (game && document.pointerLockElement !== canvas) setGame(false); });
+
 let hideTimer = 0;
 function showChips(keep) {
   for (const id of ['chips', 'backChips', 'leftcol']) $(id).classList.remove('hide');
@@ -1926,7 +2128,7 @@ setInterval(() => {
 })();
 
 // For testing from the console: window.freewatch.
-window.freewatch = { ui, app, mem, connect, panel, tally, note, strict, explainPath, Mirror, Session, Out, parseRelay, turnUrls, graphemes, passwordKeys, EFFORT_LIMITS, normaliseCode, looksLikeCode, hostIdFrom, nalUnits, nalOfType };
+window.freewatch = { padFromGamepad, XB, sendPad, unplugPad, ui, app, mem, connect, panel, tally, note, strict, explainPath, Mirror, Session, Out, parseRelay, turnUrls, graphemes, passwordKeys, EFFORT_LIMITS, normaliseCode, looksLikeCode, hostIdFrom, nalUnits, nalOfType };
 </script>
 </body>
 </html>
